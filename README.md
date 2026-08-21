@@ -233,7 +233,7 @@ Estas funcionalidades forman parte del **alcance deseable** y estarán supeditad
 **OverZone — Videojuego multijugador 2D Top-Down de disparos en arena**
 
 **Enlace a la Wiki del Proyecto (Propuesta Detallada):**
-[Ver la Propuesta Completa del Proyecto aquí]((https://github.com/FacuScardaoni/OverZoneScardaoni/wiki/Propuesta-del-Proyecto-‐-%5BOverZone%5D))
+[Ver la Propuesta Completa del Proyecto aquí](https://github.com/FacuScardaoni/OverZoneScardaoni/wiki/Propuesta-del-Proyecto-‐-%5BOverZone%5D)
 
 **Autor:** Facundo Scardaoni
 **Fecha de propuesta:** 01/07/2026
