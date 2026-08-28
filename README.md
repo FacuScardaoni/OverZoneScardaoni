@@ -161,8 +161,8 @@ Antes de ejecutar el proyecto se recomienda disponer de:
 ### Clonar el repositorio
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
-cd OverZone
+git clone https://github.com/FacuScardaoni/OverZoneScardaoni.git
+cd OverZoneScardaoni
 ```
 
 ### Importar el proyecto
