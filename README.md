@@ -171,11 +171,10 @@ Abrir el proyecto mediante **IntelliJ IDEA** y permitir que Gradle sincronice la
 
 ### Ejecutar
 
-El proyecto utiliza Gradle como sistema de compilación. La ejecución dependerá de la configuración de módulos y tareas generada en el proyecto LibGDX.
-
-En una configuración estándar de LibGDX con módulo de escritorio, puede utilizarse:
+El proyecto utiliza Gradle como sistema de compilación. 
 
 ```bash
+
 ./gradlew lwjgl3:run
 ```
 
@@ -184,8 +183,6 @@ En Windows:
 ```bash
 gradlew.bat lwjgl3:run
 ```
-
-> **Nota:** La tarea exacta de ejecución puede variar según la estructura final del proyecto Gradle.
 
 Para ejecutar una partida multijugador, será necesario iniciar el servidor y posteriormente conectar las instancias de los clientes dentro de la misma red local.
 
