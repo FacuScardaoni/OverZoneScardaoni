@@ -127,7 +127,7 @@ Esta división permite priorizar confiabilidad para los eventos críticos y baja
 El proyecto utiliza las siguientes tecnologías y herramientas:
 
 * **Java SE 21 (LTS)** — Lenguaje y plataforma principal.
-* **LibGDX 1.13.5** — Framework para desarrollo de videojuegos 2D.
+* **LibGDX 1.14.2** — Framework para desarrollo de videojuegos 2D.
 * **Gradle** — Sistema de compilación y gestión de dependencias.
 * **IntelliJ IDEA Community Edition 2025.x** — Entorno de desarrollo.
 * **Git** — Control de versiones.
@@ -196,7 +196,7 @@ El desarrollo se encuentra planteado de manera progresiva, comenzando por la pre
 
 * [x] Definición de la propuesta.
 * [x] Diseño conceptual del videojuego.
-* [ ] Configuración inicial del proyecto LibGDX.
+* [x] Configuración inicial del proyecto LibGDX.
 * [ ] Menú principal.
 * [ ] Prototipo local.
 * [ ] Movimiento Top-Down.

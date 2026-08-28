@@ -6,7 +6,7 @@ El formato utilizado está basado en el estándar **Keep a Changelog**, organiza
 
 ## [0.1.0] - 2026-08-21
 
-### Added
+### Agregado
 
 * Estructura inicial de documentación del proyecto.
 * Archivo `README.md`.
@@ -20,9 +20,7 @@ El formato utilizado está basado en el estándar **Keep a Changelog**, organiza
 * Definición de los personajes iniciales Volt y Brutus.
 * Definición de las principales mecánicas de combate.
 
-## [0.1.0] - 2026-07-01
-
-### Added
+### Agregado
 
 * Creación de la propuesta inicial de **OverZone**.
 * Definición de OverZone como videojuego multijugador competitivo 2D Top-Down.
