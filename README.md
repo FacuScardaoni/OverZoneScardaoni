@@ -188,32 +188,65 @@ Para ejecutar una partida multijugador, será necesario iniciar el servidor y po
 
 ## Estado actual
 
-**Configuración inicial y estructura del proyecto.**
+**Segunda pre-entrega: prototipo local jugable.**
 
-El desarrollo se encuentra planteado de manera progresiva, comenzando por la preparación del proyecto y continuando posteriormente con el prototipo local, el desarrollo del servidor, la sincronización en red, las mecánicas de combate, el contenido y finalmente las pruebas y optimización.
+El proyecto cuenta con una primera versión jugable en un solo cliente (sin red todavía), que implementa:
+
+* Menú principal, partida y pantallas de pausa / resultados (victoria o derrota), con transición entre ellas sin cerrar la aplicación.
+* Movimiento en ocho direcciones (WASD) con animación de caminata a partir de un spritesheet.
+* Apuntado con mouse, disparo de proyectiles y habilidad especial "Impulso Over" (dash) con cooldown.
+* Una arena con obstáculos que bloquean el movimiento y los disparos.
+* Cámara que sigue al jugador dentro de los límites de la arena, adaptada a distintos tamaños de ventana.
+* Enemigos tipo torreta que disparan, reciben daño, son eliminados y reaparecen, otorgando puntaje.
+* HUD fijo con vida, cooldown de habilidad, puntaje, tiempo restante y estado del sonido.
+* Música de fondo, efectos de sonido y controles de volumen/silenciado.
+
+La arquitectura Cliente-Servidor (TCP/UDP) y la sincronización multijugador descriptas en la propuesta se implementarán en la siguiente etapa del desarrollo, sobre la base de esta estructura de código.
+
+**Controles del prototipo:** `W A S D` moverse · Mouse apuntar · Click izquierdo disparar · Click derecho o `Espacio` Impulso Over · `ESC` pausa · `M` silenciar · `+`/`-` volumen. La lista completa también puede consultarse dentro del juego, desde el menú principal o desde la pantalla de pausa.
+
+**Video de demostración:** _(agregar aquí el enlace a YouTube/Google Drive con permisos de visualización para los docentes)._
+
+## Arquitectura del código (prototipo)
+
+El código del prototipo está organizado por responsabilidad dentro de `core/src/main/java/com/OverZone/Scardaoni/`:
+
+| Paquete | Contenido |
+| --- | --- |
+| `input` | `PlayerInputProcessor`: captura teclado y mouse. |
+| `entities` | `Player`, `Projectile`, `Obstacle`, `EnemyDummy`. |
+| `world` | `Arena`: entorno, límites y obstáculos del mapa. |
+| `graphics` | `DirectionalAnimation`: animación desde spritesheet. |
+| `audio` | `AudioManager`: música, efectos y volumen. |
+| `ui` | `Hud`: interfaz fija en pantalla. |
+| `screens` | `MenuScreen`, `ControlsScreen`, `GameScreen`, `PauseScreen`, `ResultsScreen`. |
+
+`Main` extiende `Game` y administra la transición entre pantallas.
+
+El detalle completo (diagrama de clases, diagrama de paquetes, flujo de pantallas y justificación de las decisiones de diseño) está en [`docs/diagrama-clases.md`](docs/diagrama-clases.md).
 
 ## Roadmap
 
 * [x] Definición de la propuesta.
 * [x] Diseño conceptual del videojuego.
 * [x] Configuración inicial del proyecto LibGDX.
-* [ ] Menú principal.
-* [ ] Prototipo local.
-* [ ] Movimiento Top-Down.
-* [ ] Cámara y colisiones.
-* [ ] Sistema de disparos.
+* [x] Menú principal.
+* [x] Prototipo local.
+* [x] Movimiento Top-Down.
+* [x] Cámara y colisiones.
+* [x] Sistema de disparos.
 * [ ] Servidor.
 * [ ] Comunicación TCP.
 * [ ] Comunicación UDP.
 * [ ] Sincronización de jugadores.
 * [ ] Sincronización de proyectiles.
-* [ ] Sistema de combate.
-* [ ] Sistema de eliminaciones y reapariciones.
-* [ ] Habilidades especiales.
-* [ ] Sistema de puntaje.
-* [ ] Temporizador.
-* [ ] HUD.
-* [ ] Pantalla de resultados.
+* [x] Sistema de combate (versión local, contra enemigos tipo torreta).
+* [x] Sistema de eliminaciones y reapariciones (versión local).
+* [x] Habilidades especiales (Impulso Over).
+* [x] Sistema de puntaje.
+* [x] Temporizador.
+* [x] HUD.
+* [x] Pantalla de resultados.
 * [ ] Personajes y recursos gráficos definitivos.
 * [ ] Pruebas con múltiples clientes.
 * [ ] Pruebas en red LAN.
