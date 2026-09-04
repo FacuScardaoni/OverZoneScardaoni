@@ -262,6 +262,9 @@ Estas funcionalidades forman parte del **alcance deseable** y estarán supeditad
 
 **OverZone — Videojuego multijugador 2D Top-Down de disparos en arena**
 
+**GamePlay del primer prototipo Local jugable de OverZone**
+https://drive.google.com/file/d/1tHq9PHhATy7u8D4hXtat0BgTIXoNtNCn/view?usp=drive_link
+
 **Enlace a la Wiki del Proyecto (Propuesta Detallada):**
 [Ver la Propuesta Completa del Proyecto aquí](https://github.com/FacuScardaoni/OverZoneScardaoni/wiki/Propuesta-del-Proyecto-‐-%5BOverZone%5D)
 
