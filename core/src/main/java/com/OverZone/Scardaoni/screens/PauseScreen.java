@@ -1,41 +1,34 @@
 package com.OverZone.Scardaoni.screens;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
-import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
-import com.badlogic.gdx.utils.viewport.FitViewport;
-import com.badlogic.gdx.utils.viewport.Viewport;
 import com.OverZone.Scardaoni.Main;
 import com.OverZone.Scardaoni.audio.AudioManager;
+import com.OverZone.Scardaoni.game.MatchPhase;
 
+/**
+ * Menú de pausa durante una partida en red.
+ *
+ * En un juego en red la partida NO se detiene: sigue corriendo en el
+ * servidor. Mientras este menú está abierto, el cliente deja de mandar
+ * entradas y el servidor detiene al personaje. La conexión sigue activa.
+ */
+public class PauseScreen extends BaseMenuScreen {
 
-public class PauseScreen implements Screen {
-
-    private final Main game;
     private final GameScreen gameScreen;
     private final AudioManager audio;
+    /** true si se volvió a la partida: en ese caso no hay que liberarla. */
+    private boolean resumed = false;
 
-    private final OrthographicCamera camera = new OrthographicCamera();
-    private final Viewport viewport;
-    private final SpriteBatch batch = new SpriteBatch();
-    private final ShapeRenderer shapes = new ShapeRenderer();
-    private final BitmapFont titleFont = new BitmapFont();
-    private final BitmapFont font = new BitmapFont();
-
-    private final Rectangle resumeButton   = new Rectangle(190, 160, 100, 30);
-    private final Rectangle controlsButton = new Rectangle(190, 122, 100, 30);
-    private final Rectangle menuButton     = new Rectangle(190,  84, 100, 30);
-    private final Rectangle muteButton     = new Rectangle(150,  10, 72, 20);
+    private final Rectangle resumeButton     = new Rectangle(170, 160, 140, 30);
+    private final Rectangle controlsButton   = new Rectangle(170, 122, 140, 30);
+    private final Rectangle disconnectButton = new Rectangle(170,  84, 140, 30);
+    private final Rectangle muteButton       = new Rectangle(150,  10, 72, 20);
 
     // --- Barra de volumen ---
     private static final float SLIDER_X = 150f;
@@ -45,24 +38,18 @@ public class PauseScreen implements Screen {
     private static final float KNOB_RADIUS = 7f;
     private final Rectangle sliderHitBox = new Rectangle(
         SLIDER_X - KNOB_RADIUS, SLIDER_Y - 11, SLIDER_WIDTH + KNOB_RADIUS * 2, 28);
-
     private boolean draggingVolume = false;
 
     public PauseScreen(Main game, GameScreen gameScreen) {
-        this.game = game;
+        super(game, 1.8f);
         this.gameScreen = gameScreen;
         this.audio = game.getAudioManager();
-        viewport = new FitViewport(480, 270, camera);
-        camera.position.set(240, 135, 0);
-        titleFont.getData().setScale(1.8f);
+        background.set(0.04f, 0.05f, 0.08f, 1f);
     }
 
     @Override
-    public void show() {
-        gameScreen.pause();
-        audio.playMusic();
-        Gdx.input.setInputProcessor(new InputAdapter() {
-
+    protected InputProcessor createInputProcessor() {
+        return new InputAdapter() {
             @Override
             public boolean keyUp(int keycode) {
                 switch (keycode) {
@@ -78,38 +65,30 @@ public class PauseScreen implements Screen {
             @Override
             public boolean touchDown(int screenX, int screenY, int pointer, int button) {
                 if (button != Input.Buttons.LEFT) return false;
-                Vector3 world = viewport.unproject(new Vector3(screenX, screenY, 0));
+                Vector3 world = toWorld(screenX, screenY);
 
                 if (sliderHitBox.contains(world.x, world.y)) {
                     draggingVolume = true;
                     updateVolumeFromX(world.x);
-                    return true;
-                }
-                if (muteButton.contains(world.x, world.y)) {
+                } else if (muteButton.contains(world.x, world.y)) {
                     audio.MutearDesmutear();
-                    return true;
-                }
-                if (resumeButton.contains(world.x, world.y)) {
+                } else if (resumeButton.contains(world.x, world.y)) {
                     resumeGame();
-                    return true;
-                }
-                if (controlsButton.contains(world.x, world.y)) {
+                } else if (controlsButton.contains(world.x, world.y)) {
                     game.setScreen(new ControlsScreen(game, PauseScreen.this));
-                    return true;
+                } else if (disconnectButton.contains(world.x, world.y)) {
+                    game.disconnect();
+                    game.replaceScreen(new MenuScreen(game));
+                } else {
+                    return false;
                 }
-                if (menuButton.contains(world.x, world.y)) {
-                    gameScreen.dispose();
-                    game.setScreen(new MenuScreen(game));
-                    return true;
-                }
-                return false;
+                return true;
             }
 
             @Override
             public boolean touchDragged(int screenX, int screenY, int pointer) {
                 if (!draggingVolume) return false;
-                Vector3 world = viewport.unproject(new Vector3(screenX, screenY, 0));
-                updateVolumeFromX(world.x);
+                updateVolumeFromX(toWorld(screenX, screenY).x);
                 return true;
             }
 
@@ -118,99 +97,75 @@ public class PauseScreen implements Screen {
                 draggingVolume = false;
                 return false;
             }
-        });
+        };
     }
 
-    /** Convierte una posición horizontal del mundo en un volumen de 0 a 1. */
+    /** Convierte una posición horizontal en un volumen de 0 a 1. */
     private void updateVolumeFromX(float worldX) {
         float ratio = (worldX - SLIDER_X) / SLIDER_WIDTH;
         audio.setVolumeXBarra(MathUtils.clamp(ratio, 0f, 1f));
     }
 
     private void resumeGame() {
-        game.setScreen(gameScreen);
+        resumed = true;
+        game.replaceScreen(gameScreen); // libera esta pantalla, no la partida
         gameScreen.resumeGame();
     }
 
     @Override
-    public void render(float delta) {
-        Gdx.gl.glClearColor(0.04f, 0.05f, 0.08f, 1f);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-        camera.update();
+    protected boolean update(float delta) {
+        // Si la partida termina o se pierde la conexión con la pausa abierta,
+        // se sale de acá (y se libera la partida).
+        return game.followServer(MatchPhase.PLAYING);
+    }
 
-        Vector3 mouseWorld = viewport.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
+    @Override
+    protected void drawShapes(Vector3 mouse) {
         float volume = audio.getVolume();
         boolean muted = audio.isMuted();
-        // Si está silenciado, la barra se dibuja vacía aunque el volumen
-        // guardado sea mayor, para reflejar lo que realmente se escucha.
         float shownVolume = muted ? 0f : volume;
 
-        shapes.setProjectionMatrix(camera.combined);
-        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        drawButton(resumeButton, mouse, 0.20f, 0.50f, 0.85f);
+        drawButton(controlsButton, mouse, 0.25f, 0.40f, 0.55f);
+        drawButton(disconnectButton, mouse, 0.45f, 0.30f, 0.30f);
+        drawButton(muteButton, mouse, muted ? 0.45f : 0.25f, 0.25f, 0.30f);
 
-        drawButton(resumeButton, mouseWorld, 0.20f, 0.50f, 0.85f);
-        drawButton(controlsButton, mouseWorld, 0.25f, 0.40f, 0.55f);
-        drawButton(menuButton, mouseWorld, 0.45f, 0.30f, 0.30f);
-        drawButton(muteButton, mouseWorld, muted ? 0.45f : 0.25f, 0.25f, 0.30f);
-
-        // Riel de la barra
         shapes.setColor(0.18f, 0.18f, 0.22f, 1f);
         shapes.rect(SLIDER_X, SLIDER_Y, SLIDER_WIDTH, SLIDER_HEIGHT);
-        // Parte llena
-        if (muted) {
-            shapes.setColor(0.35f, 0.35f, 0.38f, 1f);
-        } else {
-            shapes.setColor(0.30f, 0.65f, 0.95f, 1f);
-        }
+        if (muted) shapes.setColor(0.35f, 0.35f, 0.38f, 1f);
+        else shapes.setColor(0.30f, 0.65f, 0.95f, 1f);
         shapes.rect(SLIDER_X, SLIDER_Y, SLIDER_WIDTH * shownVolume, SLIDER_HEIGHT);
 
-        boolean sliderActive = draggingVolume || sliderHitBox.contains(mouseWorld.x, mouseWorld.y);
+        boolean sliderActive = draggingVolume || sliderHitBox.contains(mouse.x, mouse.y);
         shapes.setColor(sliderActive ? 1f : 0.85f, sliderActive ? 1f : 0.85f, 0.9f, 1f);
         shapes.circle(SLIDER_X + SLIDER_WIDTH * shownVolume, SLIDER_Y + SLIDER_HEIGHT / 2f, KNOB_RADIUS);
+    }
 
-        shapes.end();
-
-        batch.setProjectionMatrix(camera.combined);
-        batch.begin();
+    @Override
+    protected void drawText(Vector3 mouse) {
+        float volume = audio.getVolume();
+        boolean muted = audio.isMuted();
 
         titleFont.setColor(Color.WHITE);
-        titleFont.draw(batch, "PAUSA", 190, 240);
+        drawCentered(titleFont, "PAUSA", WIDTH / 2f, 245);
+        font.setColor(Color.ORANGE);
+        drawCentered(font, "La partida sigue en curso: tu personaje esta quieto", WIDTH / 2f, 210);
 
-        font.setColor(Color.WHITE);
-        font.draw(batch, "Reanudar", resumeButton.x + 24, resumeButton.y + 20);
-        font.draw(batch, "Controles", controlsButton.x + 22, controlsButton.y + 20);
-        font.draw(batch, "Menu principal", menuButton.x + 5, menuButton.y + 20);
+        drawButtonLabel(resumeButton, "Reanudar");
+        drawButtonLabel(controlsButton, "Controles");
+        drawButtonLabel(disconnectButton, "Desconectarse");
 
         font.setColor(Color.LIGHT_GRAY);
         font.draw(batch, "Volumen", 62, SLIDER_Y + 11);
         font.setColor(Color.WHITE);
         font.draw(batch, muted ? "OFF" : (int) (volume * 100) + "%", 360, SLIDER_Y + 11);
-        font.draw(batch, muted ? "Activar" : "Silenciar", muteButton.x + 8, muteButton.y + 14);
-
-        batch.end();
+        drawButtonLabel(muteButton, muted ? "Activar" : "Silenciar");
     }
-
-    private void drawButton(Rectangle rect, Vector3 mouseWorld, float r, float g, float b) {
-        boolean hover = rect.contains(mouseWorld.x, mouseWorld.y);
-        float boost = hover ? 0.15f : 0f;
-        shapes.setColor(r + boost, g + boost, b + boost, 1f);
-        shapes.rect(rect.x, rect.y, rect.width, rect.height);
-    }
-
-    @Override
-    public void resize(int width, int height) {
-        viewport.update(width, height, true);
-    }
-
-    @Override public void pause() { }
-    @Override public void resume() { }
-    @Override public void hide() { }
 
     @Override
     public void dispose() {
-        batch.dispose();
-        shapes.dispose();
-        titleFont.dispose();
-        font.dispose();
+        super.dispose();
+        // Si no se volvió a la partida, la partida tampoco se va a usar más.
+        if (!resumed) gameScreen.dispose();
     }
 }

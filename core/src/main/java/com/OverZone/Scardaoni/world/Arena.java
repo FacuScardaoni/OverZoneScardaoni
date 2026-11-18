@@ -38,10 +38,16 @@ public class Arena {
         obstacles.add(new Obstacle(582, 246, bw, bh));   // flanco derecho del centro
     }
 
+    /** Busca un lugar libre cerca del centro del mapa. */
     public Vector2 findFreeSpawn(float entitySize) {
-        float centerX = WIDTH / 2f;
-        float centerY = HEIGHT / 2f;
+        return findFreeSpawnNear(WIDTH / 2f, HEIGHT / 2f, entitySize);
+    }
 
+    /**
+     * Busca el lugar libre de obstáculos más cercano al punto indicado,
+     * recorriendo círculos cada vez más grandes alrededor de él.
+     */
+    public Vector2 findFreeSpawnNear(float centerX, float centerY, float entitySize) {
         if (isFreeFor(centerX, centerY, entitySize)) {
             return new Vector2(centerX, centerY);
         }

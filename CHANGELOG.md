@@ -4,6 +4,59 @@ Todos los cambios importantes realizados en **OverZone** serán documentados en 
 
 El formato utilizado está basado en el estándar **Keep a Changelog**, organizando las modificaciones desde las más recientes hasta las más antiguas.
 
+## [0.3.0] - 2026-11-14
+
+Implementación de la arquitectura Cliente-Servidor sobre UDP. El juego pasa de un prototipo local contra torretas a partidas en red por equipos.
+
+### Agregado
+
+**Servidor (nuevo módulo `server`)**
+
+* `GameServer`: servidor autoritativo con un hilo de recepción y un bucle de juego de paso fijo (60 actualizaciones por segundo) que envía el estado completo a los clientes 30 veces por segundo.
+* `ServerLauncher`: programa independiente, ejecutable desde el cmd (`gradlew server:run` o `java -jar`), con comandos de consola `estado`, `retardo`, `perdida`, `normal` y `salir`.
+* Simulación de retardo y pérdida de paquetes desde la consola, para probar el comportamiento ante problemas de red.
+
+**Lógica de partida compartida (paquete `game`)**
+
+* `MatchSimulation`: la partida real, ejecutada solo en el servidor. Equipos Azul y Rojo, de 2 a 4 jugadores, eliminaciones, reaparición con protección, puntaje por equipo y temporizador.
+* `MatchPhase`: etapas de la partida (sala, cuenta regresiva, juego y resultados).
+
+**Red (paquete `network`)**
+
+* `Protocol`: mensajes de texto, puerto, tiempos de espera y frecuencias.
+* `ClientNetwork`: búsqueda del servidor por broadcast, conexión con reintentos, latido cada 250 ms, medición del ping y detección de conexión perdida.
+* `WorldSnapshot` y `PlayerInput`: estado de la partida y entradas del jugador, con número de secuencia para descartar paquetes viejos.
+
+**Pantallas**
+
+* `ConnectScreen`: búsqueda del servidor y conexión, con opción de reintentar.
+* `LobbyScreen`: sala de espera con equipos y marca de "listo".
+* `MessageScreen`: avisos de errores de red con regreso al menú.
+* `BaseMenuScreen`: clase base abstracta con el código común de las pantallas de menú.
+
+**Documentación**
+
+* `docs/arquitectura-red.md`: protocolo, hilos, manejo de errores y cumplimiento de los requisitos técnicos.
+
+### Cambiado
+
+* `GameScreen`: ya no simula la partida. Envía las entradas al servidor y dibuja el estado recibido, interpolando entre los dos últimos estados.
+* `Player` y `Projectile`: incorporan identificador y equipo; el jugador maneja eliminación, reaparición y estadísticas.
+* `Hud`: muestra el puntaje por equipo, el equipo propio, el ping y la cuenta para reaparecer.
+* `PauseScreen`: en red la partida no se detiene; ofrece reanudar, ver controles o desconectarse.
+* `ResultsScreen`: muestra victoria, derrota o empate por equipo y las estadísticas de cada jugador, y vuelve sola a la sala.
+* Las pantallas de menú heredan de `BaseMenuScreen`.
+* Al cambiar de pantalla se libera la anterior (`Main.replaceScreen`), lo que evita la acumulación de memoria.
+* Comunicación únicamente por UDP; la confiabilidad de los eventos importantes se resuelve con el envío del estado completo, números de secuencia y reintentos.
+
+### Eliminado
+
+* `EnemyDummy`: las torretas del prototipo local se reemplazan por el combate entre jugadores.
+
+### Corregido
+
+* Un disparo con el mouse ubicado exactamente sobre el jugador creaba un proyectil sin dirección que quedaba inmóvil para siempre.
+
 ## [0.2.3] - 2026-09-02
 
 * `README.md`: se actualizó el estado del proyecto, se incorporó la lista de controles, se agregó la descripción de la arquitectura del código por paquetes y se enlazó el documento del diagrama de clases.

@@ -1,0 +1,30 @@
+plugins {
+  id "application"
+}
+
+application.mainClass = 'com.OverZone.Scardaoni.server.ServerLauncher'
+application.applicationName = 'OverZone-Server'
+eclipse.project.name = appName + '-server'
+
+dependencies {
+  implementation project(':core')
+}
+
+run {
+  // Permite escribir comandos ("estado", "salir") en la consola del servidor
+  // cuando se ejecuta con "gradlew server:run".
+  standardInput = System.in
+}
+
+// "gradlew server:jar" genera un .jar que se ejecuta solo, desde el cmd:
+//   java -jar server/build/libs/OverZone-Server-1.0.0.jar
+jar {
+  archiveFileName.set("OverZone-Server-${projectVersion}.jar")
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+  dependsOn configurations.runtimeClasspath
+  from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+  exclude('META-INF/INDEX.LIST', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA')
+  manifest {
+    attributes 'Main-Class': application.mainClass
+  }
+}

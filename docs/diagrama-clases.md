@@ -1,5 +1,7 @@
 # Diagrama de clases y paquetes — OverZone (prototipo)
 
+> **Nota:** este documento describe el **prototipo local** de la segunda pre-entrega. La arquitectura actual, con servidor y red, está en [`arquitectura-red.md`](arquitectura-red.md).
+
 Este documento describe la organización interna del código del prototipo entregado en la segunda pre-entrega. El objetivo de esta estructura es que cada clase tenga **una única responsabilidad clara**, de modo que la capa de red (Cliente-Servidor, TCP/UDP) pueda integrarse en la siguiente etapa sin reescribir la lógica de juego.
 
 ## 1. Vista general por paquetes

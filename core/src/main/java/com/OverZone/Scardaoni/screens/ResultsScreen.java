@@ -1,98 +1,130 @@
 package com.OverZone.Scardaoni.screens;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
-import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
-import com.badlogic.gdx.utils.viewport.FitViewport;
-import com.badlogic.gdx.utils.viewport.Viewport;
 import com.OverZone.Scardaoni.Main;
+import com.OverZone.Scardaoni.game.MatchPhase;
+import com.OverZone.Scardaoni.game.Team;
+import com.OverZone.Scardaoni.network.ClientNetwork;
+import com.OverZone.Scardaoni.network.WorldSnapshot;
 
+/**
+ * Resultados de la partida. Los datos vienen del servidor. Pasados unos
+ * segundos, el servidor vuelve a la sala de espera y esta pantalla la sigue,
+ * así se puede jugar otra partida sin cerrar el programa.
+ */
+public class ResultsScreen extends BaseMenuScreen {
 
-public class ResultsScreen implements Screen {
+    private final Rectangle leaveButton = new Rectangle(170, 20, 140, 28);
 
-    private final Main game;
-    private final boolean victory;
-    private final int score;
-
-    private final OrthographicCamera camera = new OrthographicCamera();
-    private final Viewport viewport;
-    private final SpriteBatch batch = new SpriteBatch();
-    private final ShapeRenderer shapes = new ShapeRenderer();
-    private final BitmapFont titleFont = new BitmapFont();
-    private final BitmapFont font = new BitmapFont();
-
-    private final Rectangle menuButton = new Rectangle(190, 90, 100, 30);
-
-    public ResultsScreen(Main game, boolean victory, int score) {
-        this.game = game;
-        this.victory = victory;
-        this.score = score;
-        viewport = new FitViewport(480, 270, camera);
-        camera.position.set(240, 135, 0);
-        titleFont.getData().setScale(2f);
+    public ResultsScreen(Main game) {
+        super(game, 2f);
     }
 
     @Override
     public void show() {
-        Gdx.input.setInputProcessor(new InputAdapter() {
+        super.show();
+        game.getAudioManager().pauseMusic();
+        if (game.getNetwork() != null) game.getNetwork().setReady(false);
+    }
+
+    @Override
+    protected InputProcessor createInputProcessor() {
+        return new InputAdapter() {
             @Override
-            public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-                if (button != Input.Buttons.LEFT) return false;
-                Vector3 world = viewport.unproject(new Vector3(screenX, screenY, 0));
-                if (menuButton.contains(world.x, world.y)) {
-                    game.setScreen(new MenuScreen(game));
+            public boolean keyUp(int keycode) {
+                if (keycode == Input.Keys.ESCAPE) {
+                    leave();
                     return true;
                 }
                 return false;
             }
-        });
+
+            @Override
+            public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+                if (button == Input.Buttons.LEFT && clicked(leaveButton, screenX, screenY)) {
+                    leave();
+                    return true;
+                }
+                return false;
+            }
+        };
+    }
+
+    private void leave() {
+        game.disconnect();
+        game.replaceScreen(new MenuScreen(game));
     }
 
     @Override
-    public void render(float delta) {
-        Gdx.gl.glClearColor(0.05f, 0.06f, 0.1f, 1f);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-        camera.update();
+    protected boolean update(float delta) {
+        return game.followServer(MatchPhase.RESULTS);
+    }
 
-        shapes.setProjectionMatrix(camera.combined);
-        shapes.begin(ShapeRenderer.ShapeType.Filled);
-        shapes.setColor(0.3f, 0.3f, 0.3f, 1f);
-        shapes.rect(menuButton.x, menuButton.y, menuButton.width, menuButton.height);
-        shapes.end();
+    @Override
+    protected void drawShapes(Vector3 mouse) {
+        shapes.setColor(0.12f, 0.14f, 0.2f, 1f);
+        shapes.rect(60, 62, 360, 88);
+        drawButton(leaveButton, mouse, 0.30f, 0.30f, 0.35f);
+    }
 
-        batch.setProjectionMatrix(camera.combined);
-        batch.begin();
-        titleFont.setColor(victory ? Color.GOLD : Color.SCARLET);
-        titleFont.draw(batch, victory ? "VICTORIA" : "DERROTA", 170, 210);
+    @Override
+    protected void drawText(Vector3 mouse) {
+        ClientNetwork net = game.getNetwork();
+        WorldSnapshot snap = net == null ? null : net.getLatestSnapshot();
+        if (snap == null) return;
+
+        WorldSnapshot.PlayerState me = snap.findPlayer(net.getPlayerId());
+        int myTeam = me == null ? Team.NONE : me.team;
+
+        String title;
+        Color color;
+        if (snap.winner == Team.NONE) {
+            title = "EMPATE";
+            color = Color.LIGHT_GRAY;
+        } else if (snap.winner == myTeam) {
+            title = "VICTORIA";
+            color = Color.GOLD;
+        } else {
+            title = "DERROTA";
+            color = Color.SCARLET;
+        }
+        titleFont.setColor(color);
+        drawCentered(titleFont, title, WIDTH / 2f, 250);
+
+        font.setColor(Color.LIGHT_GRAY);
+        drawCentered(font, snap.endReason.equals("PLAYERS")
+            ? "La partida termino porque un equipo se quedo sin jugadores"
+            : "Tiempo agotado", WIDTH / 2f, 212);
+
+        font.setColor(Color.SKY);
+        drawCentered(font, "Azul " + snap.scoreBlue, WIDTH / 2f - 60, 188);
         font.setColor(Color.WHITE);
-        font.draw(batch, "Puntaje final: " + score, 190, 170);
-        font.draw(batch, "Menu principal", menuButton.x - 5, menuButton.y + 20);
-        batch.end();
-    }
+        drawCentered(font, "-", WIDTH / 2f, 188);
+        font.setColor(Color.SALMON);
+        drawCentered(font, snap.scoreRed + " Rojo", WIDTH / 2f + 60, 188);
 
-    @Override
-    public void resize(int width, int height) {
-        viewport.update(width, height, true);
-    }
+        font.setColor(Color.GRAY);
+        font.draw(batch, "Jugador", 75, 143);
+        font.draw(batch, "Equipo", 220, 143);
+        font.draw(batch, "Elim.", 300, 143);
+        font.draw(batch, "Muertes", 350, 143);
+        float y = 125;
+        for (WorldSnapshot.PlayerState p : snap.players) {
+            font.setColor(p.id == net.getPlayerId() ? Color.YELLOW : Color.WHITE);
+            font.draw(batch, p.name, 75, y);
+            font.draw(batch, Team.name(p.team), 220, y);
+            font.draw(batch, String.valueOf(p.kills), 310, y);
+            font.draw(batch, String.valueOf(p.deaths), 370, y);
+            y -= 16;
+        }
 
-    @Override public void pause() { }
-    @Override public void resume() { }
-    @Override public void hide() { }
-
-    @Override
-    public void dispose() {
-        batch.dispose();
-        shapes.dispose();
-        titleFont.dispose();
-        font.dispose();
+        font.setColor(Color.GRAY);
+        drawCentered(font, "Volviendo a la sala en " + (int) Math.ceil(snap.phaseTimer) + " s", WIDTH / 2f, 60);
+        drawButtonLabel(leaveButton, "Salir al menu");
     }
 }

@@ -32,7 +32,7 @@ La versión mínima del proyecto contempla:
 * Combate por equipos basado en eliminaciones.
 * Arquitectura Cliente-Servidor.
 * Servidor autoritativo.
-* Comunicación mediante TCP y UDP.
+* Comunicación mediante UDP.
 * Sincronización en tiempo real.
 * Un mapa funcional.
 * Movimiento en ocho direcciones.
@@ -76,39 +76,25 @@ Activa un escudo frontal capaz de absorber parte del daño recibido durante algu
 
 ## Arquitectura de red
 
-OverZone utiliza una arquitectura **Cliente-Servidor con servidor autoritativo**.
+OverZone utiliza una arquitectura **Cliente-Servidor con servidor autoritativo**, con toda la comunicación sobre **UDP**.
 
-Cada jugador ejecuta una instancia del cliente, mientras que el servidor administra el estado global de la partida. Los clientes envían sus acciones al servidor y reciben las actualizaciones correspondientes.
+El servidor es un programa aparte (módulo `server`), sin ventana, que puede ejecutarse en otra computadora de la red local. Es el único que ejecuta la lógica de la partida: movimiento, colisiones, disparos, daño, eliminaciones, reapariciones, puntaje, temporizador y finalización.
 
-El servidor es responsable de validar los eventos importantes, incluyendo impactos, daño, eliminaciones, reapariciones, puntaje y finalización de la partida.
+Los clientes solo hacen dos cosas:
 
-### TCP
+* **Envían sus entradas** (teclas de movimiento, posición del mouse, disparo y habilidad), nunca su posición.
+* **Dibujan el estado** que reciben del servidor.
 
-TCP se utilizará para información cuya pérdida pueda provocar inconsistencias, como:
+### Por qué solo UDP
 
-* Conexión inicial.
-* Creación y unión a partidas.
-* Selección de personaje.
-* Inicio de partida.
-* Eliminaciones.
-* Reapariciones.
-* Actualización del puntaje.
-* Finalización de la partida.
-* Resultados.
+La propuesta inicial contemplaba TCP para los eventos críticos y UDP para las actualizaciones frecuentes. En la implementación se utiliza únicamente UDP, siguiendo lo trabajado en la materia, y la confiabilidad de los eventos críticos se resuelve con el diseño de los mensajes:
 
-### UDP
+* **El servidor envía el estado completo, no los cambios.** 30 veces por segundo manda una "foto" de toda la partida (fase, tiempo, puntaje, jugadores y proyectiles). Si un paquete se pierde, el siguiente lo reemplaza por completo, por lo que una eliminación, un cambio de puntaje o el fin de la partida nunca se pierden.
+* **Números de secuencia.** Cada estado y cada entrada llevan un número; los paquetes que llegan tarde o desordenados se descartan.
+* **La habilidad se envía como contador.** El cliente manda cuántas veces pidió la habilidad en total, no un "se apretó ahora": si un paquete se pierde, el siguiente igual informa el pedido.
+* **Reintentos y latido.** La búsqueda y la conexión se reintentan; durante la partida, el cliente avisa cada 250 ms que sigue conectado. Si alguno de los dos lados deja de recibir datos durante 3 segundos, se considera la conexión perdida.
 
-UDP se utilizará para información frecuente donde sea prioritaria la velocidad de transmisión:
-
-* Posición de jugadores.
-* Dirección de movimiento.
-* Dirección de apuntado.
-* Posición de proyectiles.
-* Trayectoria de disparos.
-* Estado de movimiento.
-* Actualizaciones frecuentes del escenario.
-
-Esta división permite priorizar confiabilidad para los eventos críticos y baja latencia para las actualizaciones constantes del juego.
+El detalle del protocolo, los hilos y el manejo de errores está en [`docs/arquitectura-red.md`](docs/arquitectura-red.md).
 
 ## Controles
 
@@ -169,61 +155,83 @@ cd OverZoneScardaoni
 
 Abrir el proyecto mediante **IntelliJ IDEA** y permitir que Gradle sincronice las dependencias necesarias.
 
-### Ejecutar
+### Ejecutar en red
 
-El proyecto utiliza Gradle como sistema de compilación. 
+Se ejecutan dos programas: el **servidor** (una sola vez, en cualquier computadora de la red) y un **cliente** por jugador. No hace falta escribir ninguna IP: el cliente encuentra el servidor solo, mediante broadcast.
 
-```bash
-
-./gradlew lwjgl3:run
-```
-
-En Windows:
+**1. Generar los ejecutables** (una vez, desde la carpeta del proyecto, en el cmd):
 
 ```bash
-gradlew.bat lwjgl3:run
+gradlew.bat server:jar lwjgl3:jar
 ```
 
-Para ejecutar una partida multijugador, será necesario iniciar el servidor y posteriormente conectar las instancias de los clientes dentro de la misma red local.
+**2. Abrir el servidor:**
+
+```bash
+java -jar server\build\libs\OverZone-Server-1.0.0.jar
+```
+
+En la consola del servidor se pueden escribir comandos: `estado`, `retardo <ms>`, `perdida <%>`, `normal` y `salir`. `retardo` y `perdida` simulan una red lenta o con paquetes perdidos, para probar el comportamiento del juego.
+
+**3. Abrir un cliente por jugador** (en la misma computadora o en otras de la red):
+
+```bash
+java -jar lwjgl3\build\libs\OverZone-1.0.0.jar
+```
+
+En el menú elegir **Jugar en red**. En la sala de espera, cada jugador marca **Listo**; con al menos dos jugadores listos empieza la partida.
+
+También se puede ejecutar sin generar los `.jar`, con `gradlew.bat server:run` y `gradlew.bat lwjgl3:run` (en Linux o macOS, `./gradlew` en lugar de `gradlew.bat`).
+
+**Requisitos de la red**
+
+* Todas las computadoras deben estar en la **misma subred** (por ejemplo, `192.168.0.x`): el broadcast no atraviesa routers. Conviene que tengan la IP en automático (DHCP).
+* La primera vez que se abre el servidor o el cliente, Windows puede pedir permiso en el firewall: hay que permitir Java en **redes privadas**. Si el cliente no encuentra el servidor, es lo primero que conviene revisar.
+* El servidor usa el puerto UDP **5555**. Si ya hay un servidor abierto en la misma computadora, el segundo avisa que el puerto está ocupado y se cierra.
 
 ## Estado actual
 
-**Segunda pre-entrega: prototipo local jugable.**
+**Tercera etapa: juego en red (Cliente-Servidor sobre UDP).**
 
-El proyecto cuenta con una primera versión jugable en un solo cliente (sin red todavía), que implementa:
+* Servidor autoritativo independiente, con bucle de juego de paso fijo (60 actualizaciones por segundo) y envío del estado a los clientes 30 veces por segundo.
+* Descubrimiento del servidor por broadcast en la red local, sin IP escrita en el código.
+* Partidas de 2 a 4 jugadores en dos equipos (Azul y Rojo), con eliminaciones, reaparición, puntaje por equipo y temporizador de 2 minutos.
+* Sala de espera con marca de "listo", cuenta regresiva y pantalla de resultados. Al terminar, todos vuelven a la sala y pueden jugar otra partida sin reiniciar los programas.
+* Interpolación del movimiento en el cliente, descarte de paquetes viejos y medición del retardo (ping) visible en el HUD.
+* Manejo de errores de red: puerto ocupado, servidor no encontrado, partida llena, desconexión de un cliente (avisada o por tiempo de espera), cierre o caída del servidor, y cierre ordenado de sockets e hilos.
+* Simulación de retardo y pérdida de paquetes desde la consola del servidor.
 
-* Menú principal, partida y pantallas de pausa / resultados (victoria o derrota), con transición entre ellas sin cerrar la aplicación.
-* Movimiento en ocho direcciones (WASD) con animación de caminata a partir de un spritesheet.
-* Apuntado con mouse, disparo de proyectiles y habilidad especial "Impulso Over" (dash) con cooldown.
-* Una arena con obstáculos que bloquean el movimiento y los disparos.
-* Cámara que sigue al jugador dentro de los límites de la arena, adaptada a distintos tamaños de ventana.
-* Enemigos tipo torreta que disparan, reciben daño, son eliminados y reaparecen, otorgando puntaje.
-* HUD fijo con vida, cooldown de habilidad, puntaje, tiempo restante y estado del sonido.
-* Música de fondo, efectos de sonido y controles de volumen/silenciado.
+Pendiente: el segundo personaje (Brutus, con Escudo Cinético) y los recursos gráficos definitivos. Por ahora todos los jugadores usan a Volt, diferenciados por el color de su equipo.
 
-La arquitectura Cliente-Servidor (TCP/UDP) y la sincronización multijugador descriptas en la propuesta se implementarán en la siguiente etapa del desarrollo, sobre la base de esta estructura de código.
-
-**Controles del prototipo:** `W A S D` moverse · Mouse apuntar · Click izquierdo disparar · Click derecho o `Espacio` Impulso Over · `ESC` pausa · `M` silenciar · `+`/`-` volumen. La lista completa también puede consultarse dentro del juego, desde el menú principal o desde la pantalla de pausa.
+**Controles:** `W A S D` moverse · Mouse apuntar · Click izquierdo disparar · Click derecho o `Espacio` Impulso Over · `ESC` menú de pausa · `M` silenciar · `+`/`-` volumen. En red, la pausa no detiene la partida: el personaje se queda quieto mientras el menú está abierto.
 
 **Video de demostración:** _(agregar aquí el enlace a YouTube/Google Drive con permisos de visualización para los docentes)._
 
-## Arquitectura del código (prototipo)
+## Arquitectura del código
 
-El código del prototipo está organizado por responsabilidad dentro de `core/src/main/java/com/OverZone/Scardaoni/`:
+El proyecto tiene tres módulos:
 
-| Paquete | Contenido |
+| Módulo | Contenido |
 | --- | --- |
-| `input` | `PlayerInputProcessor`: captura teclado y mouse. |
-| `entities` | `Player`, `Projectile`, `Obstacle`, `EnemyDummy`. |
-| `world` | `Arena`: entorno, límites y obstáculos del mapa. |
-| `graphics` | `DirectionalAnimation`: animación desde spritesheet. |
-| `audio` | `AudioManager`: música, efectos y volumen. |
-| `ui` | `Hud`: interfaz fija en pantalla. |
-| `screens` | `MenuScreen`, `ControlsScreen`, `GameScreen`, `PauseScreen`, `ResultsScreen`. |
+| `core` | Código compartido: lógica de la partida, protocolo de red y el juego del cliente (pantallas, gráficos, audio). |
+| `server` | Programa del servidor: `ServerLauncher`, `GameServer`, `ConnectedClient`. |
+| `lwjgl3` | Lanzador del cliente para computadoras de escritorio. |
 
-`Main` extiende `Game` y administra la transición entre pantallas.
+Paquetes de `core/src/main/java/com/OverZone/Scardaoni/`:
 
-El detalle completo (diagrama de clases, diagrama de paquetes, flujo de pantallas y justificación de las decisiones de diseño) está en [`docs/diagrama-clases.md`](docs/diagrama-clases.md).
+| Paquete | Contenido | Lo usa |
+| --- | --- | --- |
+| `game` | `MatchSimulation` (la partida real), `MatchPhase`, `Team`. | Servidor |
+| `entities` | `Player`, `Projectile`, `Obstacle`, `Direction`. | Servidor (y cliente para constantes) |
+| `world` | `Arena`: mapa, obstáculos y consultas de colisión. | Ambos |
+| `network` | `Protocol`, `PlayerInput`, `WorldSnapshot`, `ClientNetwork`. | Ambos |
+| `input` | `PlayerInputProcessor`: captura teclado y mouse. | Cliente |
+| `graphics` | `DirectionalAnimation`: animación desde spritesheet. | Cliente |
+| `audio` | `AudioManager`: música, efectos y volumen. | Cliente |
+| `ui` | `Hud`: interfaz fija en pantalla. | Cliente |
+| `screens` | `BaseMenuScreen` (base abstracta), `MenuScreen`, `ConnectScreen`, `LobbyScreen`, `GameScreen`, `PauseScreen`, `ControlsScreen`, `ResultsScreen`, `MessageScreen`. | Cliente |
+
+El detalle de la red está en [`docs/arquitectura-red.md`](docs/arquitectura-red.md). El documento [`docs/diagrama-clases.md`](docs/diagrama-clases.md) describe el prototipo local de la etapa anterior.
 
 ## Roadmap
 
@@ -235,19 +243,21 @@ El detalle completo (diagrama de clases, diagrama de paquetes, flujo de pantalla
 * [x] Movimiento Top-Down.
 * [x] Cámara y colisiones.
 * [x] Sistema de disparos.
-* [ ] Servidor.
-* [ ] Comunicación TCP.
-* [ ] Comunicación UDP.
-* [ ] Sincronización de jugadores.
-* [ ] Sincronización de proyectiles.
-* [x] Sistema de combate (versión local, contra enemigos tipo torreta).
-* [x] Sistema de eliminaciones y reapariciones (versión local).
+* [x] Servidor.
+* [x] Comunicación UDP (con descubrimiento por broadcast).
+* [x] Sincronización de jugadores.
+* [x] Sincronización de proyectiles.
+* [x] Manejo de errores y desconexiones.
+* [x] Reinicio de partidas sin cerrar los programas.
+* [x] Sistema de combate por equipos.
+* [x] Sistema de eliminaciones y reapariciones.
 * [x] Habilidades especiales (Impulso Over).
 * [x] Sistema de puntaje.
 * [x] Temporizador.
 * [x] HUD.
 * [x] Pantalla de resultados.
-* [ ] Personajes y recursos gráficos definitivos.
+* [ ] Segundo personaje (Brutus).
+* [ ] Recursos gráficos definitivos.
 * [ ] Pruebas con múltiples clientes.
 * [ ] Pruebas en red LAN.
 * [ ] Optimización y corrección de errores.

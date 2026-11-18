@@ -2,127 +2,112 @@ package com.OverZone.Scardaoni.screens;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
-import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
-import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.OverZone.Scardaoni.Main;
 import com.OverZone.Scardaoni.audio.AudioManager;
-import com.OverZone.Scardaoni.entities.EnemyDummy;
 import com.OverZone.Scardaoni.entities.Obstacle;
 import com.OverZone.Scardaoni.entities.Player;
 import com.OverZone.Scardaoni.entities.Projectile;
+import com.OverZone.Scardaoni.game.MatchPhase;
+import com.OverZone.Scardaoni.game.Team;
 import com.OverZone.Scardaoni.graphics.DirectionalAnimation;
 import com.OverZone.Scardaoni.input.PlayerInputProcessor;
+import com.OverZone.Scardaoni.network.ClientNetwork;
+import com.OverZone.Scardaoni.network.WorldSnapshot;
 import com.OverZone.Scardaoni.ui.Hud;
 import com.OverZone.Scardaoni.world.Arena;
 
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * Pantalla de juego del CLIENTE.
+ *
+ * Ya no simula la partida: eso lo hace el servidor. En cada frame:
+ *  1. Lee teclado y mouse y le ENVÍA esas entradas al servidor.
+ *  2. Toma los dos últimos estados que mandó el servidor.
+ *  3. DIBUJA a cada jugador y proyectil en un punto intermedio entre esos
+ *     dos estados (interpolación), para que el movimiento se vea suave
+ *     aunque los estados lleguen 30 veces por segundo y con algo de retardo.
+ *
+ * Los sonidos también se deducen del estado: si aparece un proyectil nuevo,
+ * suena un disparo; si baja mi vida, suena un impacto, etc.
+ */
 public class GameScreen implements Screen {
 
-    private static final float MATCH_DURATION = 90f; // segundos de partida
-    private static final float PLAYER_FIRE_COOLDOWN = 0.22f;
+    /** Si un jugador se movió más que esto entre dos estados, reapareció: no se interpola. */
+    private static final float TELEPORT_DISTANCE = 80f;
+
+    private static final Color BLUE_TINT = new Color(0.65f, 0.8f, 1f, 1f);
+    private static final Color RED_TINT = new Color(1f, 0.65f, 0.65f, 1f);
 
     private final Main game;
     private final AudioManager audio;
 
     private final OrthographicCamera worldCamera;
     private final Viewport worldViewport;
-
     private final SpriteBatch batch;
     private final Hud hud;
     private final PlayerInputProcessor input;
+    /** El mapa es fijo e igual en el servidor y en el cliente: se usa solo para dibujarlo. */
     private final Arena arena;
+    private final BitmapFont labelFont;
+    private final GlyphLayout layout = new GlyphLayout();
 
-    // --- Recursos gráficos ---
-    private Texture playerSheet, enemySheet, obstacleTexture, floorTexture, projPlayerTex, projEnemyTex;
+    private Texture playerSheet, obstacleTexture, floorTexture, projOwnTex, projEnemyTex;
     private DirectionalAnimation playerAnimation;
-    private TextureRegion[] enemyFrames;
     private TextureRegion floorRegion;
 
-    // --- Entidades ---
-    private Player player;
-    private final Array<EnemyDummy> enemies = new Array<>();
-    private final Array<Projectile> projectiles = new Array<>();
-
-    // --- Estado de partida ---
-    private int score = 0;
-    private float timeRemaining = MATCH_DURATION;
-    private float playerFireCooldown = 0f;
     private float animationTimer = 0f;
-    private boolean matchFinished = false;
     private boolean disposed = false;
+
+    // --- Para deducir sonidos a partir de los estados ---
+    private long lastProcessedSeq = -1;
+    private Set<Integer> knownProjectiles = new HashSet<>();
+    private float lastHealth = -1f;
+    private int lastScoreTotal = -1;
+    private boolean wasDashing = false;
 
     public GameScreen(Main game) {
         this.game = game;
         this.audio = game.getAudioManager();
 
         worldCamera = new OrthographicCamera();
-        // Ventana visible de 480x270 unidades. La arena mide 960x540, por lo
-        // que la cámara necesariamente debe desplazarse siguiendo al jugador.
-        // ExtendViewport evita deformaciones al cambiar el tamaño de ventana.
         worldViewport = new ExtendViewport(480, 270, worldCamera);
-
         batch = new SpriteBatch();
         hud = new Hud();
         input = new PlayerInputProcessor();
         arena = new Arena();
+        labelFont = new BitmapFont();
+        labelFont.getData().setScale(0.6f);
 
         loadAssets();
-        resetMatch();
     }
 
     private void loadAssets() {
-        // Punto 2: spritesheet de 4 filas (direcciones) x 4 columnas (cuadros)
         playerSheet = new Texture(Gdx.files.internal("player_walk.png"));
         playerAnimation = new DirectionalAnimation(playerSheet, 32, 32, 4, 0.12f);
-
-        enemySheet = new Texture(Gdx.files.internal("enemy_dummy.png"));
-        enemyFrames = TextureRegion.split(enemySheet, 32, 32)[0];
 
         obstacleTexture = new Texture(Gdx.files.internal("obstacle.png"));
 
         floorTexture = new Texture(Gdx.files.internal("floor_tile.png"));
         floorTexture.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-        // Región mayor que la textura: con wrap Repeat, el piso se repite en mosaico.
         floorRegion = new TextureRegion(floorTexture, 0, 0, (int) Arena.WIDTH, (int) Arena.HEIGHT);
 
-        projPlayerTex = new Texture(Gdx.files.internal("projectile_player.png"));
+        projOwnTex = new Texture(Gdx.files.internal("projectile_player.png"));
         projEnemyTex = new Texture(Gdx.files.internal("projectile_enemy.png"));
-    }
-
-    /** Deja la partida en su estado inicial (usado al crear la pantalla y al reiniciar). */
-    private void resetMatch() {
-        // El punto de aparición se consulta a la arena, que garantiza que esté
-        // libre de obstáculos (de lo contrario el jugador quedaría trabado).
-        Vector2 spawn = arena.findFreeSpawn(Player.SIZE);
-        player = new Player(spawn.x, spawn.y);
-        enemies.clear();
-        // Posiciones verificadas como libres de obstáculos: si un enemigo
-        // apareciera dentro de un bloque, sus disparos impactarían contra él
-        // en el mismo frame en que se crean.
-        addEnemyIfFree(150, Arena.HEIGHT / 2f);
-        addEnemyIfFree(Arena.WIDTH - 150, Arena.HEIGHT / 2f);
-        addEnemyIfFree(Arena.WIDTH / 2f, 150);
-        projectiles.clear();
-        score = 0;
-        timeRemaining = MATCH_DURATION;
-        playerFireCooldown = 0f;
-        matchFinished = false;
-    }
-
-    /** Agrega un enemigo solo si la posición no se superpone con un obstáculo. */
-    private void addEnemyIfFree(float x, float y) {
-        if (arena.isFreeFor(x, y, EnemyDummy.SIZE)) {
-            enemies.add(new EnemyDummy(x, y));
-        }
     }
 
     @Override
@@ -132,34 +117,22 @@ public class GameScreen implements Screen {
     }
 
     // ------------------------------------------------------------------
-    // Bucle principal
+    // Bucle del cliente
     // ------------------------------------------------------------------
 
     @Override
     public void render(float delta) {
-        update(delta);
-        // Si la partida terminó, ya se cambió de pantalla: no se dibuja ni se
-        // sigue usando esta pantalla, y se liberan sus recursos.
-        if (matchFinished) {
-            dispose();
-            return;
-        }
-        draw();
-    }
+        // Si la partida terminó o se perdió la conexión, se cambia de pantalla.
+        if (game.followServer(MatchPhase.PLAYING)) return;
 
-    private void update(float delta) {
+        ClientNetwork net = game.getNetwork();
         animationTimer += delta;
         playerAnimation.update(delta);
 
-        updateMouseWorldPosition();
-
-        // Acciones globales que no dependen del estado del jugador.
         if (input.isMuteJustPressed()) audio.MutearDesmutear();
         if (input.isVolumeUpJustPressed()) audio.SubirVolumen();
         if (input.isVolumeDownJustPressed()) audio.BajarVolumen();
 
-        // La pausa cambia de pantalla; se sale del update para no seguir
-        // simulando la partida en el mismo frame.
         if (input.isPauseJustPressed()) {
             input.resetTransient();
             input.releaseAllKeys();
@@ -167,208 +140,117 @@ public class GameScreen implements Screen {
             return;
         }
 
-        player.update(delta);
-        handlePlayerMovement(delta);
-        handlePlayerShooting(delta);
-        updateEnemies(delta);
-        updateProjectiles(delta);
-        resolveCollisions();
-        updateCamera();
-
+        // 1. Enviar entradas al servidor (la posición del mouse, en coordenadas del mapa).
+        Vector3 mouse = worldViewport.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
+        net.sendInput(input.getMoveX(), input.getMoveY(), mouse.x, mouse.y,
+            input.isFirePressed(), input.isAbilityJustPressed());
         input.resetTransient();
 
-        timeRemaining -= delta;
-        if (!matchFinished && timeRemaining <= 0) {
-            endMatch(true);
-        } else if (!matchFinished && !player.isAlive()) {
-            endMatch(false);
+        // 2. Tomar los dos últimos estados recibidos.
+        ClientNetwork.SnapshotPair pair = net.getSnapshots();
+        if (pair == null) return;
+        float alpha = interpolationAlpha(pair);
+        int myId = net.getPlayerId();
+
+        playSoundEvents(pair.current, myId);
+
+        // 3. Cámara sobre mi jugador y dibujo.
+        WorldSnapshot.PlayerState me = pair.current.findPlayer(myId);
+        if (me != null) {
+            updateCamera(lerpX(pair, me, alpha), lerpY(pair, me, alpha));
         }
+        draw(pair, alpha, me, net.getPingMs());
     }
 
-    /** Convierte la posición del mouse (píxeles de pantalla) a coordenadas del mundo. */
-    private void updateMouseWorldPosition() {
-        Vector3 mouseWorld = worldViewport.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
-        input.setMouseWorldPosition(mouseWorld.x, mouseWorld.y);
+    // ------------------------------------------------------------------
+    // Interpolación
+    // ------------------------------------------------------------------
+
+    /**
+     * Qué tan avanzado está el tiempo entre el estado anterior (0) y el
+     * actual (1). Se mide con el tiempo que tardó en llegar el estado actual
+     * después del anterior.
+     */
+    private float interpolationAlpha(ClientNetwork.SnapshotPair pair) {
+        long interval = pair.current.receivedNanos - pair.previous.receivedNanos;
+        if (interval <= 0) return 1f;
+        float elapsed = System.nanoTime() - pair.current.receivedNanos;
+        return MathUtils.clamp(elapsed / interval, 0f, 1f);
     }
 
-    private void handlePlayerMovement(float delta) {
-        float moveX = input.getMoveX();
-        float moveY = input.getMoveY();
-        boolean pressingMovementKeys = input.isMoving();
-
-        // Habilidad especial: si hay teclas de movimiento, se impulsa en esa
-        // dirección; si no, hacia donde apunta el mouse.
-        if (input.isAbilityJustPressed() && !player.isDashing()) {
-            float dashX = pressingMovementKeys ? moveX : (input.getMouseWorldX() - player.getX());
-            float dashY = pressingMovementKeys ? moveY : (input.getMouseWorldY() - player.getY());
-            boolean wasDashing = player.isDashing();
-            player.tryStartDash(dashX, dashY);
-            if (!wasDashing && player.isDashing()) {
-                audio.playDash();
-            }
-        }
-
-        float speed = player.getCurrentSpeed();
-        float dx = 0, dy = 0;
-
-        if (player.isDashing()) {
-            // Durante el dash el jugador conserva la dirección del impulso.
-            dx = player.getDashDirX() * speed * delta;
-            dy = player.getDashDirY() * speed * delta;
-        } else if (pressingMovementKeys) {
-            float length = (float) Math.sqrt(moveX * moveX + moveY * moveY);
-            if (length > 0) {
-                dx = (moveX / length) * speed * delta;
-                dy = (moveY / length) * speed * delta;
-            }
-        }
-
-        moveWithCollision(dx, dy);
-        player.setMoving(pressingMovementKeys || player.isDashing());
-
-        if (pressingMovementKeys) {
-            player.setFacingDirection(directionFromVector(moveX, moveY));
-        } else {
-            player.setFacingDirection(directionFromVector(
-                input.getMouseWorldX() - player.getX(),
-                input.getMouseWorldY() - player.getY()));
-        }
+    private float lerpX(ClientNetwork.SnapshotPair pair, WorldSnapshot.PlayerState p, float alpha) {
+        WorldSnapshot.PlayerState before = pair.previous.findPlayer(p.id);
+        if (!canInterpolate(before, p)) return p.x;
+        return MathUtils.lerp(before.x, p.x, alpha);
     }
 
-    private int directionFromVector(float x, float y) {
-        if (Math.abs(x) > Math.abs(y)) {
-            return x > 0 ? DirectionalAnimation.RIGHT : DirectionalAnimation.LEFT;
-        }
-        return y > 0 ? DirectionalAnimation.UP : DirectionalAnimation.DOWN;
+    private float lerpY(ClientNetwork.SnapshotPair pair, WorldSnapshot.PlayerState p, float alpha) {
+        WorldSnapshot.PlayerState before = pair.previous.findPlayer(p.id);
+        if (!canInterpolate(before, p)) return p.y;
+        return MathUtils.lerp(before.y, p.y, alpha);
     }
 
-    private void moveWithCollision(float dx, float dy) {
-        if (dx != 0) {
-            float newX = player.getX() + dx;
-            Rectangle testX = new Rectangle(newX - Player.SIZE / 2f,
-                player.getY() - Player.SIZE / 2f, Player.SIZE, Player.SIZE);
-            if (!arena.collidesWithAny(testX)) {
-                player.setX(newX);
-            }
-        }
-        if (dy != 0) {
-            float newY = player.getY() + dy;
-            Rectangle testY = new Rectangle(player.getX() - Player.SIZE / 2f,
-                newY - Player.SIZE / 2f, Player.SIZE, Player.SIZE);
-            if (!arena.collidesWithAny(testY)) {
-                player.setY(newY);
-            }
-        }
+    private boolean canInterpolate(WorldSnapshot.PlayerState before, WorldSnapshot.PlayerState now) {
+        if (before == null || !before.alive) return false;
+        return Math.abs(before.x - now.x) < TELEPORT_DISTANCE && Math.abs(before.y - now.y) < TELEPORT_DISTANCE;
     }
 
-    private void handlePlayerShooting(float delta) {
-        if (playerFireCooldown > 0) {
-            playerFireCooldown -= delta;
+    // ------------------------------------------------------------------
+    // Sonidos deducidos del estado
+    // ------------------------------------------------------------------
+
+    private void playSoundEvents(WorldSnapshot snap, int myId) {
+        if (snap.seq == lastProcessedSeq) return; // este estado ya se procesó
+        boolean first = lastProcessedSeq < 0;
+        lastProcessedSeq = snap.seq;
+
+        Set<Integer> current = new HashSet<>();
+        boolean newShot = false;
+        for (WorldSnapshot.ProjectileState p : snap.projectiles) {
+            current.add(p.id);
+            if (!knownProjectiles.contains(p.id)) newShot = true;
         }
-        if (input.isFirePressed() && playerFireCooldown <= 0) {
-            projectiles.add(new Projectile(
-                player.getX(), player.getY(),
-                input.getMouseWorldX() - player.getX(),
-                input.getMouseWorldY() - player.getY(),
-                true));
-            audio.playShoot();
-            playerFireCooldown = PLAYER_FIRE_COOLDOWN;
+        knownProjectiles = current;
+        if (newShot && !first) audio.playShoot();
+
+        WorldSnapshot.PlayerState me = snap.findPlayer(myId);
+        if (me != null) {
+            if (lastHealth >= 0 && me.health < lastHealth) audio.playHit();
+            lastHealth = me.health;
+            if (me.dashing && !wasDashing) audio.playDash();
+            wasDashing = me.dashing;
         }
+
+        int scoreTotal = snap.scoreBlue + snap.scoreRed;
+        if (lastScoreTotal >= 0 && scoreTotal > lastScoreTotal) audio.playEnemyDown();
+        lastScoreTotal = scoreTotal;
     }
 
-    private void updateEnemies(float delta) {
-        for (EnemyDummy enemy : enemies) {
-            enemy.update(delta);
-            if (enemy.canFireAt(player.getX(), player.getY())) {
-                projectiles.add(new Projectile(
-                    enemy.getX(), enemy.getY(),
-                    player.getX() - enemy.getX(),
-                    player.getY() - enemy.getY(),
-                    false));
-                enemy.resetFireCooldown();
-            }
-        }
-    }
+    // ------------------------------------------------------------------
+    // Cámara y dibujo
+    // ------------------------------------------------------------------
 
-    private void updateProjectiles(float delta) {
-        for (Projectile p : projectiles) {
-            p.update(delta);
-            if (p.getX() < 0 || p.getX() > Arena.WIDTH || p.getY() < 0 || p.getY() > Arena.HEIGHT) {
-                p.kill();
-            }
-        }
-    }
-
-    private void resolveCollisions() {
-        for (Projectile p : projectiles) {
-            if (!p.isAlive()) continue;
-            Rectangle projectileBounds = p.getBounds();
-
-            // Proyectil contra obstáculo del entorno.
-            if (arena.collidesWithAny(projectileBounds)) {
-                p.kill();
-                continue;
-            }
-
-            if (p.isFromPlayer()) {
-                // Proyectil del jugador contra enemigos.
-                for (EnemyDummy enemy : enemies) {
-                    if (enemy.isAlive() && enemy.getBounds().overlaps(projectileBounds)) {
-                        enemy.takeDamage(Projectile.DAMAGE_PLAYER_TO_ENEMY);
-                        p.kill();
-                        if (enemy.isAlive()) {
-                            audio.playHit();
-                        } else {
-                            score += EnemyDummy.SCORE_VALUE;
-                            audio.playEnemyDown();
-                        }
-                        break;
-                    }
-                }
-            } else if (player.getBounds().overlaps(projectileBounds)) {
-                // Proyectil enemigo contra el jugador.
-                if (!player.isInvulnerable()) {
-                    player.takeDamage(Projectile.DAMAGE_ENEMY_TO_PLAYER);
-                    audio.playHit();
-                }
-                p.kill();
-            }
-        }
-
-        // Eliminación de los proyectiles marcados como muertos.
-        for (int i = projectiles.size - 1; i >= 0; i--) {
-            if (!projectiles.get(i).isAlive()) {
-                projectiles.removeIndex(i);
-            }
-        }
-    }
-
-    private void updateCamera() {
+    private void updateCamera(float targetX, float targetY) {
         float halfWidth = worldCamera.viewportWidth * worldCamera.zoom / 2f;
         float halfHeight = worldCamera.viewportHeight * worldCamera.zoom / 2f;
 
         float camX = (halfWidth * 2 >= Arena.WIDTH)
             ? Arena.WIDTH / 2f
-            : MathUtils.clamp(player.getX(), halfWidth, Arena.WIDTH - halfWidth);
-
+            : MathUtils.clamp(targetX, halfWidth, Arena.WIDTH - halfWidth);
         float camY = (halfHeight * 2 >= Arena.HEIGHT)
             ? Arena.HEIGHT / 2f
-            : MathUtils.clamp(player.getY(), halfHeight, Arena.HEIGHT - halfHeight);
+            : MathUtils.clamp(targetY, halfHeight, Arena.HEIGHT - halfHeight);
 
         worldCamera.position.set(camX, camY, 0);
         worldCamera.update();
     }
 
-    private void endMatch(boolean victory) {
-        matchFinished = true;
-        audio.pauseMusic();
-        game.setScreen(new ResultsScreen(game, victory, score));
-    }
-
-
-    private void draw() {
+    private void draw(ClientNetwork.SnapshotPair pair, float alpha, WorldSnapshot.PlayerState me, float pingMs) {
         Gdx.gl.glClearColor(0.08f, 0.08f, 0.10f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+        WorldSnapshot snap = pair.current;
+        int myTeam = me == null ? Team.NONE : me.team;
 
         worldViewport.apply();
         batch.setProjectionMatrix(worldCamera.combined);
@@ -381,36 +263,47 @@ public class GameScreen implements Screen {
             batch.draw(obstacleTexture, b.x, b.y, b.width, b.height);
         }
 
-        int enemyFrame = ((int) (animationTimer * 4)) % enemyFrames.length;
-        for (EnemyDummy enemy : enemies) {
-            if (!enemy.isAlive()) continue;
-            batch.draw(enemyFrames[enemyFrame],
-                enemy.getX() - EnemyDummy.SIZE / 2f,
-                enemy.getY() - EnemyDummy.SIZE / 2f,
-                EnemyDummy.SIZE, EnemyDummy.SIZE);
+        // Jugadores, teñidos con el color de su equipo.
+        for (WorldSnapshot.PlayerState p : snap.players) {
+            if (!p.alive) continue;
+            boolean visible = !p.invulnerable || ((int) (animationTimer * 12) % 2 == 0);
+            if (!visible) continue;
+            float x = lerpX(pair, p, alpha);
+            float y = lerpY(pair, p, alpha);
+            batch.setColor(p.team == Team.BLUE ? BLUE_TINT : RED_TINT);
+            TextureRegion frame = playerAnimation.getFrame(p.facing, p.moving);
+            batch.draw(frame, x - Player.SIZE / 2f, y - Player.SIZE / 2f, Player.SIZE, Player.SIZE);
+        }
+        batch.setColor(Color.WHITE);
+
+        // Proyectiles: los de mi equipo con una imagen y los rivales con otra.
+        for (WorldSnapshot.ProjectileState p : snap.projectiles) {
+            WorldSnapshot.ProjectileState before = pair.previous.findProjectile(p.id);
+            float x = before == null ? p.x : MathUtils.lerp(before.x, p.x, alpha);
+            float y = before == null ? p.y : MathUtils.lerp(before.y, p.y, alpha);
+            Texture tex = p.team == myTeam ? projOwnTex : projEnemyTex;
+            batch.draw(tex, x - Projectile.SIZE / 2f, y - Projectile.SIZE / 2f, Projectile.SIZE, Projectile.SIZE);
         }
 
-        boolean visible = !player.isInvulnerable() || ((int) (animationTimer * 12) % 2 == 0);
-        if (visible) {
-            TextureRegion frame = playerAnimation.getFrame(player.getFacingDirection(), player.isMoving());
-            batch.draw(frame,
-                player.getX() - Player.SIZE / 2f,
-                player.getY() - Player.SIZE / 2f,
-                Player.SIZE, Player.SIZE);
+        // Nombres sobre cada jugador.
+        for (WorldSnapshot.PlayerState p : snap.players) {
+            if (!p.alive) continue;
+            boolean isMe = me != null && p.id == me.id;
+            labelFont.setColor(isMe ? Color.YELLOW : (p.team == Team.BLUE ? Color.SKY : Color.SALMON));
+            String label = isMe ? "Vos" : p.name;
+            layout.setText(labelFont, label);
+            labelFont.draw(batch, label, lerpX(pair, p, alpha) - layout.width / 2f, lerpY(pair, p, alpha) + Player.SIZE);
         }
 
-        for (Projectile p : projectiles) {
-            Texture tex = p.isFromPlayer() ? projPlayerTex : projEnemyTex;
-            batch.draw(tex,
-                p.getX() - Projectile.SIZE / 2f,
-                p.getY() - Projectile.SIZE / 2f,
-                Projectile.SIZE, Projectile.SIZE);
-        }
         batch.end();
 
         hud.getViewport().apply();
-        hud.render(batch, player, score, timeRemaining, audio.isMuted(), audio.getVolume());
+        hud.render(batch, me, snap, audio.isMuted(), audio.getVolume(), pingMs);
     }
+
+    // ------------------------------------------------------------------
+    // Ciclo de vida
+    // ------------------------------------------------------------------
 
     @Override
     public void resize(int width, int height) {
@@ -418,16 +311,11 @@ public class GameScreen implements Screen {
         hud.resize(width, height);
     }
 
-    /** Llamado por PauseScreen al reanudar la partida. */
+    /** Lo llama PauseScreen al volver a la partida. */
     public void resumeGame() {
         Gdx.input.setInputProcessor(input);
         input.releaseAllKeys();
-        audio.playMusic();
-    }
-
-    /** Reinicia la partida desde cero conservando la pantalla y sus recursos. */
-    public void restart() {
-        resetMatch();
+        input.resetTransient();
     }
 
     @Override public void pause() { }
@@ -436,18 +324,17 @@ public class GameScreen implements Screen {
 
     @Override
     public void dispose() {
-        // Guarda: esta pantalla puede liberarse al terminar la partida o al
-        // salir al menú desde la pausa; liberar dos veces provocaría un error.
+        // Guarda: puede liberarse desde la pausa o al terminar la partida.
         if (disposed) return;
         disposed = true;
 
         batch.dispose();
         hud.dispose();
-        playerAnimation.dispose();
-        enemySheet.dispose();
+        labelFont.dispose();
+        playerAnimation.dispose(); // libera playerSheet
         obstacleTexture.dispose();
         floorTexture.dispose();
-        projPlayerTex.dispose();
+        projOwnTex.dispose();
         projEnemyTex.dispose();
     }
 }
