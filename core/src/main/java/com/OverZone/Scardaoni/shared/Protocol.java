@@ -1,4 +1,12 @@
-package com.OverZone.Scardaoni.network;
+/*
+ * ARCHIVO COMPARTIDO entre los dos repositorios:
+ *   - OverZoneScardaoni         (cliente)
+ *   - OverZoneScardaoni-Server  (servidor)
+ * Tiene que ser IDÉNTICO en los dos. Si lo cambiás en uno, copialo al otro.
+ * Si cambia el formato de algún mensaje, subí también Protocol.VERSION, así
+ * un cliente y un servidor de versiones distintas se avisan en lugar de fallar.
+ */
+package com.OverZone.Scardaoni.shared;
 
 import java.util.Locale;
 
@@ -10,20 +18,27 @@ import java.util.Locale;
  *
  * Cliente → Servidor
  *   OVERZONE_DISCOVER                      (broadcast) ¿hay algún servidor?
- *   CONNECT;nombre                         quiero unirme
+ *   CONNECT;nombre;version                 quiero unirme
  *   INPUT;seq;moveX;moveY;aimX;aimY;fire;abilityCount
  *   PING;listo;marcaDeTiempo               sigo conectado (cada 250 ms)
  *   DISCONNECT                             me voy
  *
  * Servidor → Cliente
- *   OVERZONE_SERVER;nombre;jugadores;max   respuesta al broadcast
+ *   OVERZONE_SERVER;nombre;jugadores;max;version   respuesta al broadcast
  *   WELCOME;idJugador                      conexión aceptada
- *   REJECT;motivo                          conexión rechazada (FULL / UNKNOWN)
+ *   REJECT;motivo                          conexión rechazada (FULL / UNKNOWN / VERSION)
  *   STATE;...                              estado completo de la partida
  *   PONG;marcaDeTiempo                     respuesta al PING (mide el retardo)
  *   SHUTDOWN                               el servidor se está cerrando
  */
 public final class Protocol {
+
+    /**
+     * Versión del protocolo. Cliente y servidor están en repositorios
+     * distintos: si uno se actualiza y el otro no, esta versión no coincide
+     * y la conexión se rechaza con un aviso claro.
+     */
+    public static final int VERSION = 1;
 
     public static final int SERVER_PORT = 5555;
     public static final int MAX_PLAYERS = 4;
@@ -48,6 +63,7 @@ public final class Protocol {
 
     public static final String REASON_FULL = "FULL";
     public static final String REASON_UNKNOWN = "UNKNOWN";
+    public static final String REASON_VERSION = "VERSION";
 
     // --- Tiempos (milisegundos) ---
     /** Cada cuánto el cliente avisa que sigue conectado. */

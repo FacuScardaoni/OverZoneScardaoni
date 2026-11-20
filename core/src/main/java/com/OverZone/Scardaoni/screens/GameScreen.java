@@ -17,17 +17,16 @@ import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.OverZone.Scardaoni.Main;
 import com.OverZone.Scardaoni.audio.AudioManager;
-import com.OverZone.Scardaoni.entities.Obstacle;
-import com.OverZone.Scardaoni.entities.Player;
-import com.OverZone.Scardaoni.entities.Projectile;
-import com.OverZone.Scardaoni.game.MatchPhase;
-import com.OverZone.Scardaoni.game.Team;
+import com.OverZone.Scardaoni.shared.Obstacle;
+import com.OverZone.Scardaoni.shared.MatchPhase;
+import com.OverZone.Scardaoni.shared.Team;
 import com.OverZone.Scardaoni.graphics.DirectionalAnimation;
 import com.OverZone.Scardaoni.input.PlayerInputProcessor;
 import com.OverZone.Scardaoni.network.ClientNetwork;
-import com.OverZone.Scardaoni.network.WorldSnapshot;
+import com.OverZone.Scardaoni.shared.WorldSnapshot;
 import com.OverZone.Scardaoni.ui.Hud;
-import com.OverZone.Scardaoni.world.Arena;
+import com.OverZone.Scardaoni.shared.Arena;
+import com.OverZone.Scardaoni.shared.GameConstants;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -272,7 +271,7 @@ public class GameScreen implements Screen {
             float y = lerpY(pair, p, alpha);
             batch.setColor(p.team == Team.BLUE ? BLUE_TINT : RED_TINT);
             TextureRegion frame = playerAnimation.getFrame(p.facing, p.moving);
-            batch.draw(frame, x - Player.SIZE / 2f, y - Player.SIZE / 2f, Player.SIZE, Player.SIZE);
+            batch.draw(frame, x - GameConstants.PLAYER_SIZE / 2f, y - GameConstants.PLAYER_SIZE / 2f, GameConstants.PLAYER_SIZE, GameConstants.PLAYER_SIZE);
         }
         batch.setColor(Color.WHITE);
 
@@ -282,7 +281,7 @@ public class GameScreen implements Screen {
             float x = before == null ? p.x : MathUtils.lerp(before.x, p.x, alpha);
             float y = before == null ? p.y : MathUtils.lerp(before.y, p.y, alpha);
             Texture tex = p.team == myTeam ? projOwnTex : projEnemyTex;
-            batch.draw(tex, x - Projectile.SIZE / 2f, y - Projectile.SIZE / 2f, Projectile.SIZE, Projectile.SIZE);
+            batch.draw(tex, x - GameConstants.PROJECTILE_SIZE / 2f, y - GameConstants.PROJECTILE_SIZE / 2f, GameConstants.PROJECTILE_SIZE, GameConstants.PROJECTILE_SIZE);
         }
 
         // Nombres sobre cada jugador.
@@ -292,7 +291,7 @@ public class GameScreen implements Screen {
             labelFont.setColor(isMe ? Color.YELLOW : (p.team == Team.BLUE ? Color.SKY : Color.SALMON));
             String label = isMe ? "Vos" : p.name;
             layout.setText(labelFont, label);
-            labelFont.draw(batch, label, lerpX(pair, p, alpha) - layout.width / 2f, lerpY(pair, p, alpha) + Player.SIZE);
+            labelFont.draw(batch, label, lerpX(pair, p, alpha) - layout.width / 2f, lerpY(pair, p, alpha) + GameConstants.PLAYER_SIZE);
         }
 
         batch.end();

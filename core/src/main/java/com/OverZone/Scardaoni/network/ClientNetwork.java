@@ -1,5 +1,9 @@
 package com.OverZone.Scardaoni.network;
 
+import com.OverZone.Scardaoni.shared.PlayerInput;
+import com.OverZone.Scardaoni.shared.Protocol;
+import com.OverZone.Scardaoni.shared.WorldSnapshot;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -158,7 +162,7 @@ public class ClientNetwork {
                             fail("Se encontro el servidor, pero no respondio al pedido de conexion.");
                             break;
                         }
-                        send(Protocol.join(Protocol.CONNECT, playerName));
+                        send(Protocol.join(Protocol.CONNECT, playerName, Protocol.VERSION));
                         attempts++;
                         lastAttemptMs = nowMs;
                     }
@@ -203,6 +207,11 @@ public class ClientNetwork {
         // Mientras se busca, se acepta la primera respuesta de un servidor.
         if (status == Status.SEARCHING) {
             if (type.equals(Protocol.SERVER_INFO)) {
+                int serverVersion = parts.length > 4 ? parseIntOr(parts[4], -1) : -1;
+                if (serverVersion != Protocol.VERSION) {
+                    fail(versionMessage(serverVersion));
+                    return;
+                }
                 serverAddress = from;
                 serverPort = fromPort;
                 serverName = parts.length > 1 ? parts[1] : "";
@@ -225,7 +234,9 @@ public class ClientNetwork {
                     break;
                 case Protocol.REJECT:
                     String reason = parts.length > 1 ? parts[1] : "";
-                    if (reason.equals(Protocol.REASON_FULL)) {
+                    if (reason.equals(Protocol.REASON_VERSION)) {
+                        fail(versionMessage(parts.length > 2 ? parseIntOr(parts[2], -1) : -1));
+                    } else if (reason.equals(Protocol.REASON_FULL)) {
                         fail("La partida esta llena (maximo " + Protocol.MAX_PLAYERS + " jugadores).");
                     } else {
                         fail("El servidor no reconoce esta conexion\n(puede que el servidor se haya reiniciado).");
@@ -325,6 +336,20 @@ public class ClientNetwork {
         } catch (IOException e) {
             // Un envío fallido no es grave: el próximo lo reemplaza. Si la
             // conexión se cortó de verdad, lo detecta el tiempo de espera.
+        }
+    }
+
+    private static String versionMessage(int serverVersion) {
+        return "El servidor usa otra version del protocolo (servidor: " + serverVersion
+            + ", cliente: " + Protocol.VERSION + ").\n"
+            + "Actualiza el cliente y el servidor a la misma version.";
+    }
+
+    private static int parseIntOr(String text, int fallback) {
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException e) {
+            return fallback;
         }
     }
 

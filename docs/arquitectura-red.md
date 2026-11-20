@@ -30,6 +30,16 @@ flowchart LR
 
 Así, todos los clientes ven la misma partida: no puede haber dos clientes con resultados distintos, porque el resultado lo calcula uno solo.
 
+### Dos repositorios
+
+| Repositorio | Contiene |
+| --- | --- |
+| `OverZoneScardaoni` (cliente) | Pantallas, gráficos, audio, entrada y `ClientNetwork`. **No** contiene la lógica de la partida. |
+| `OverZoneScardaoni-Server` (servidor) | `GameServer`, `ConnectedClient`, `ServerLauncher` y, en `server.game`, `MatchSimulation`, `Player` y `Projectile`. |
+| Los dos (paquete `shared`) | `Protocol`, `PlayerInput`, `WorldSnapshot`, `MatchPhase`, `Team`, `Direction`, `GameConstants`, `Arena`, `Obstacle`. |
+
+El paquete `shared` está copiado en los dos repositorios y tiene que ser idéntico en ambos. Para que una diferencia no pase desapercibida, el cliente envía `Protocol.VERSION` al conectarse: si no coincide con la del servidor, la conexión se rechaza (`REJECT;VERSION`) y el cliente muestra qué versión tiene cada uno.
+
 ## 2. Hilos
 
 | Programa | Hilo | Qué hace |
@@ -49,10 +59,10 @@ Todos son texto con los campos separados por `;`. Los números con decimales sie
 | Mensaje | Sentido | Para qué |
 | --- | --- | --- |
 | `OVERZONE_DISCOVER` | Cliente → todos (broadcast) | ¿Hay un servidor en la red? |
-| `OVERZONE_SERVER;nombre;jugadores;max` | Servidor → cliente | Respuesta al broadcast. |
-| `CONNECT;nombre` | Cliente → servidor | Pedido para unirse. Se reintenta cada 500 ms. |
+| `OVERZONE_SERVER;nombre;jugadores;max;version` | Servidor → cliente | Respuesta al broadcast. Si la versión no coincide, el cliente avisa y no se conecta. |
+| `CONNECT;nombre;version` | Cliente → servidor | Pedido para unirse. Se reintenta cada 500 ms. |
 | `WELCOME;id` | Servidor → cliente | Aceptado; se le asigna un número de jugador. |
-| `REJECT;FULL` / `REJECT;UNKNOWN` | Servidor → cliente | Partida llena / el servidor no conoce a este cliente. |
+| `REJECT;FULL` / `REJECT;UNKNOWN` / `REJECT;VERSION;v` | Servidor → cliente | Partida llena / el servidor no conoce a este cliente / versión de protocolo distinta. |
 | `INPUT;seq;moveX;moveY;aimX;aimY;fire;contadorHabilidad` | Cliente → servidor | Entradas del jugador, una por frame. |
 | `PING;listo;marcaDeTiempo` | Cliente → servidor | Latido cada 250 ms; además informa si el jugador marcó "listo". |
 | `PONG;marcaDeTiempo` | Servidor → cliente | Devuelve la marca: el cliente calcula el retardo de ida y vuelta. |
@@ -67,8 +77,8 @@ sequenceDiagram
     participant C as Cliente
     participant S as Servidor
     C->>S: OVERZONE_DISCOVER (broadcast a toda la subred)
-    S-->>C: OVERZONE_SERVER;OverZone;1;4
-    C->>S: CONNECT;Facu
+    S-->>C: OVERZONE_SERVER;OverZone;1;4;1
+    C->>S: CONNECT;Facu;1
     S-->>C: WELCOME;2
     loop Cada 250 ms
         C->>S: PING;0;marca
@@ -117,6 +127,7 @@ Para comprobarlo, la consola del servidor permite simular una red mala: `retardo
 | Puerto ocupado | El servidor muestra "el puerto 5555 ya está en uso" y termina (código de salida 1). |
 | No hay servidor | El cliente reintenta el broadcast 5 veces y muestra "No se encontró ningún servidor", con opción de reintentar. |
 | Partida llena | El servidor responde `REJECT;FULL` y el cliente lo informa. |
+| Cliente y servidor de versiones distintas | El cliente muestra la versión de cada uno y no se conecta. |
 | Un cliente cierra el juego | Envía `DISCONNECT`; el servidor lo saca de la partida. |
 | Un cliente se cuelga o se corta la red | El servidor no recibe nada durante 3 s y lo desconecta. Si un equipo queda vacío, la partida termina. |
 | El servidor se cierra (`salir` o Ctrl+C) | Envía `SHUTDOWN`; los clientes muestran "El servidor se cerró" y vuelven al menú. |
@@ -129,8 +140,8 @@ Para comprobarlo, la consola del servidor permite simular una red mala: `retardo
 
 | Requisito | Dónde se cumple |
 | --- | --- |
-| 1. Juego en red con 2 clientes y servidor en otra PC | Módulo `server` independiente; clientes en cualquier PC de la subred. |
-| 2. Cliente-servidor con lógica en el servidor | `MatchSimulation` solo corre en `GameServer`. Los clientes envían `INPUT` y dibujan `STATE`. |
+| 1. Juego en red con 2 clientes y servidor en otra PC | Servidor en un repositorio y programa propios; clientes en cualquier PC de la subred. |
+| 2. Cliente-servidor con lógica en el servidor | `MatchSimulation` existe solo en el repositorio del servidor: el cliente ni siquiera tiene ese código. Los clientes envían `INPUT` y dibujan `STATE`. |
 | 3. Retardos y sincronización | Sección 5. |
 | 4. Box2D | No se usa. Las colisiones son rectángulos calculados en el servidor. |
 | 5. Errores de red | Sección 6. |

@@ -4,6 +4,24 @@ Todos los cambios importantes realizados en **OverZone** serán documentados en 
 
 El formato utilizado está basado en el estándar **Keep a Changelog**, organizando las modificaciones desde las más recientes hasta las más antiguas.
 
+## [0.4.0] - 2026-11-19
+
+Separación del cliente y el servidor en dos repositorios.
+
+### Cambiado
+
+* El servidor pasa a su propio repositorio, `OverZoneScardaoni-Server`, junto con la lógica de la partida (`MatchSimulation`, `Player`, `Projectile`). Este repositorio queda solo con el cliente.
+* Nuevo paquete `shared` con las clases que necesitan los dos programas (`Protocol`, `PlayerInput`, `WorldSnapshot`, `MatchPhase`, `Team`, `Direction`, `Arena`, `Obstacle`). Está copiado en los dos repositorios y debe mantenerse idéntico.
+* El cliente ya no usa las clases de la lógica de la partida: los tamaños y la vida máxima que necesita para dibujar están en `GameConstants`.
+
+### Agregado
+
+* `Protocol.VERSION`: el cliente envía su versión de protocolo y el servidor rechaza las conexiones con una versión distinta (`REJECT;VERSION`), mostrando un aviso claro en lugar de fallar.
+
+### Eliminado
+
+* Módulo `server` de este repositorio.
+
 ## [0.3.0] - 2026-11-14
 
 Implementación de la arquitectura Cliente-Servidor sobre UDP. El juego pasa de un prototipo local contra torretas a partidas en red por equipos.

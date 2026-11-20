@@ -7,10 +7,10 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
 import com.OverZone.Scardaoni.Main;
-import com.OverZone.Scardaoni.game.MatchPhase;
-import com.OverZone.Scardaoni.game.Team;
+import com.OverZone.Scardaoni.shared.MatchPhase;
+import com.OverZone.Scardaoni.shared.Team;
 import com.OverZone.Scardaoni.network.ClientNetwork;
-import com.OverZone.Scardaoni.network.WorldSnapshot;
+import com.OverZone.Scardaoni.shared.WorldSnapshot;
 
 /**
  * Resultados de la partida. Los datos vienen del servidor. Pasados unos

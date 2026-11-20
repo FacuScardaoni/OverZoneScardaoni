@@ -8,7 +8,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
 import com.OverZone.Scardaoni.Main;
-import com.OverZone.Scardaoni.game.MatchPhase;
+import com.OverZone.Scardaoni.shared.MatchPhase;
 
 /**
  * Lista de controles. Se abre desde el menú principal o desde la pausa, y al

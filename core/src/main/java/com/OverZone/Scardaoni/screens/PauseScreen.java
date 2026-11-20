@@ -9,7 +9,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
 import com.OverZone.Scardaoni.Main;
 import com.OverZone.Scardaoni.audio.AudioManager;
-import com.OverZone.Scardaoni.game.MatchPhase;
+import com.OverZone.Scardaoni.shared.MatchPhase;
 
 /**
  * Menú de pausa durante una partida en red.

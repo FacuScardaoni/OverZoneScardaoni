@@ -7,11 +7,11 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
 import com.OverZone.Scardaoni.Main;
-import com.OverZone.Scardaoni.game.MatchPhase;
-import com.OverZone.Scardaoni.game.MatchSimulation;
-import com.OverZone.Scardaoni.game.Team;
+import com.OverZone.Scardaoni.shared.GameConstants;
+import com.OverZone.Scardaoni.shared.MatchPhase;
+import com.OverZone.Scardaoni.shared.Team;
 import com.OverZone.Scardaoni.network.ClientNetwork;
-import com.OverZone.Scardaoni.network.WorldSnapshot;
+import com.OverZone.Scardaoni.shared.WorldSnapshot;
 
 /**
  * Sala de espera. Muestra los jugadores conectados por equipo y si están
@@ -142,8 +142,8 @@ public class LobbyScreen extends BaseMenuScreen {
         if (snap.phase == MatchPhase.COUNTDOWN) {
             return "La partida comienza en " + (int) Math.ceil(snap.phaseTimer) + "...";
         }
-        if (snap.players.size() < MatchSimulation.MIN_PLAYERS) {
-            return "Esperando jugadores (minimo " + MatchSimulation.MIN_PLAYERS + ")";
+        if (snap.players.size() < GameConstants.MIN_PLAYERS) {
+            return "Esperando jugadores (minimo " + GameConstants.MIN_PLAYERS + ")";
         }
         return "Esperando que todos esten listos";
     }

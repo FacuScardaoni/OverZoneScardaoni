@@ -8,9 +8,9 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
-import com.OverZone.Scardaoni.entities.Player;
-import com.OverZone.Scardaoni.game.Team;
-import com.OverZone.Scardaoni.network.WorldSnapshot;
+import com.OverZone.Scardaoni.shared.GameConstants;
+import com.OverZone.Scardaoni.shared.Team;
+import com.OverZone.Scardaoni.shared.WorldSnapshot;
 
 /**
  * Interfaz fija sobre el juego: vida, habilidad, reloj, puntaje por equipo,
@@ -57,7 +57,7 @@ public class Hud {
 
         float healthY = VIRTUAL_HEIGHT - 26;
         float dashY = VIRTUAL_HEIGHT - 44;
-        float healthRatio = me == null ? 0f : Math.max(0f, me.health / Player.MAX_HEALTH);
+        float healthRatio = me == null ? 0f : Math.max(0f, me.health / GameConstants.PLAYER_MAX_HEALTH);
         float abilityReady = me == null ? 0f : 1f - me.dashCooldown;
 
         shapes.setProjectionMatrix(camera.combined);

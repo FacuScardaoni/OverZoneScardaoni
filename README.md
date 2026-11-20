@@ -78,7 +78,7 @@ Activa un escudo frontal capaz de absorber parte del daño recibido durante algu
 
 OverZone utiliza una arquitectura **Cliente-Servidor con servidor autoritativo**, con toda la comunicación sobre **UDP**.
 
-El servidor es un programa aparte (módulo `server`), sin ventana, que puede ejecutarse en otra computadora de la red local. Es el único que ejecuta la lógica de la partida: movimiento, colisiones, disparos, daño, eliminaciones, reapariciones, puntaje, temporizador y finalización.
+El servidor es un programa aparte, en su propio repositorio ([**OverZoneScardaoni-Server**](https://github.com/FacuScardaoni/OverZoneScardaoni-Server)), sin ventana, que puede ejecutarse en otra computadora de la red local. Este repositorio contiene solamente el **cliente**: el código del cliente no incluye la lógica de la partida. Es el único que ejecuta la lógica de la partida: movimiento, colisiones, disparos, daño, eliminaciones, reapariciones, puntaje, temporizador y finalización.
 
 Los clientes solo hacen dos cosas:
 
@@ -159,19 +159,25 @@ Abrir el proyecto mediante **IntelliJ IDEA** y permitir que Gradle sincronice la
 
 Se ejecutan dos programas: el **servidor** (una sola vez, en cualquier computadora de la red) y un **cliente** por jugador. No hace falta escribir ninguna IP: el cliente encuentra el servidor solo, mediante broadcast.
 
-**1. Generar los ejecutables** (una vez, desde la carpeta del proyecto, en el cmd):
+Cada programa está en su propio repositorio:
+
+| Programa | Repositorio |
+| --- | --- |
+| Cliente (el juego) | Este repositorio, `OverZoneScardaoni` |
+| Servidor | [`OverZoneScardaoni-Server`](https://github.com/FacuScardaoni/OverZoneScardaoni-Server) |
+
+**1. Abrir el servidor.** Seguir las instrucciones del README del repositorio del servidor. En resumen, desde su carpeta:
 
 ```bash
-gradlew.bat server:jar lwjgl3:jar
+gradlew.bat jar
+java -jar build\libs\OverZone-Server-1.0.0.jar
 ```
 
-**2. Abrir el servidor:**
+**2. Generar el cliente** (desde la carpeta de este repositorio, en el cmd):
 
 ```bash
-java -jar server\build\libs\OverZone-Server-1.0.0.jar
+gradlew.bat lwjgl3:jar
 ```
-
-En la consola del servidor se pueden escribir comandos: `estado`, `retardo <ms>`, `perdida <%>`, `normal` y `salir`. `retardo` y `perdida` simulan una red lenta o con paquetes perdidos, para probar el comportamiento del juego.
 
 **3. Abrir un cliente por jugador** (en la misma computadora o en otras de la red):
 
@@ -181,7 +187,9 @@ java -jar lwjgl3\build\libs\OverZone-1.0.0.jar
 
 En el menú elegir **Jugar en red**. En la sala de espera, cada jugador marca **Listo**; con al menos dos jugadores listos empieza la partida.
 
-También se puede ejecutar sin generar los `.jar`, con `gradlew.bat server:run` y `gradlew.bat lwjgl3:run` (en Linux o macOS, `./gradlew` en lugar de `gradlew.bat`).
+También se puede abrir el cliente sin generar el `.jar`, con `gradlew.bat lwjgl3:run` (en Linux o macOS, `./gradlew` en lugar de `gradlew.bat`).
+
+Los dos programas requieren **Java 21**.
 
 **Requisitos de la red**
 
@@ -209,27 +217,24 @@ Pendiente: el segundo personaje (Brutus, con Escudo Cinético) y los recursos gr
 
 ## Arquitectura del código
 
-El proyecto tiene tres módulos:
+El juego está dividido en **dos repositorios**:
 
-| Módulo | Contenido |
+* **Cliente** (este repositorio): pantallas, gráficos, sonido, entrada y la parte de red del cliente.
+* **Servidor** ([`OverZoneScardaoni-Server`](https://github.com/FacuScardaoni/OverZoneScardaoni-Server)): la partida real (`MatchSimulation`, `Player`, `Projectile`) y la red del servidor (`GameServer`).
+
+Los dos comparten el paquete **`shared`**, con lo que ambos necesitan conocer igual: el protocolo de mensajes, el mapa y algunas constantes. Ese paquete está copiado en los dos repositorios y tiene que ser idéntico en ambos. `Protocol.VERSION` indica la versión del protocolo: si un cliente y un servidor de versiones distintas intentan conectarse, la conexión se rechaza con un aviso claro, en lugar de fallar de forma confusa.
+
+Este repositorio tiene dos módulos: `core` (el juego) y `lwjgl3` (el lanzador para computadoras de escritorio). Paquetes de `core/src/main/java/com/OverZone/Scardaoni/`:
+
+| Paquete | Contenido |
 | --- | --- |
-| `core` | Código compartido: lógica de la partida, protocolo de red y el juego del cliente (pantallas, gráficos, audio). |
-| `server` | Programa del servidor: `ServerLauncher`, `GameServer`, `ConnectedClient`. |
-| `lwjgl3` | Lanzador del cliente para computadoras de escritorio. |
-
-Paquetes de `core/src/main/java/com/OverZone/Scardaoni/`:
-
-| Paquete | Contenido | Lo usa |
-| --- | --- | --- |
-| `game` | `MatchSimulation` (la partida real), `MatchPhase`, `Team`. | Servidor |
-| `entities` | `Player`, `Projectile`, `Obstacle`, `Direction`. | Servidor (y cliente para constantes) |
-| `world` | `Arena`: mapa, obstáculos y consultas de colisión. | Ambos |
-| `network` | `Protocol`, `PlayerInput`, `WorldSnapshot`, `ClientNetwork`. | Ambos |
-| `input` | `PlayerInputProcessor`: captura teclado y mouse. | Cliente |
-| `graphics` | `DirectionalAnimation`: animación desde spritesheet. | Cliente |
-| `audio` | `AudioManager`: música, efectos y volumen. | Cliente |
-| `ui` | `Hud`: interfaz fija en pantalla. | Cliente |
-| `screens` | `BaseMenuScreen` (base abstracta), `MenuScreen`, `ConnectScreen`, `LobbyScreen`, `GameScreen`, `PauseScreen`, `ControlsScreen`, `ResultsScreen`, `MessageScreen`. | Cliente |
+| `shared` | **Compartido con el servidor:** `Protocol`, `PlayerInput`, `WorldSnapshot`, `MatchPhase`, `Team`, `Direction`, `GameConstants`, `Arena`, `Obstacle`. |
+| `network` | `ClientNetwork`: búsqueda del servidor, conexión y recepción del estado. |
+| `input` | `PlayerInputProcessor`: captura teclado y mouse. |
+| `graphics` | `DirectionalAnimation`: animación desde spritesheet. |
+| `audio` | `AudioManager`: música, efectos y volumen. |
+| `ui` | `Hud`: interfaz fija en pantalla. |
+| `screens` | `BaseMenuScreen` (base abstracta), `MenuScreen`, `ConnectScreen`, `LobbyScreen`, `GameScreen`, `PauseScreen`, `ControlsScreen`, `ResultsScreen`, `MessageScreen`. |
 
 El detalle de la red está en [`docs/arquitectura-red.md`](docs/arquitectura-red.md). El documento [`docs/diagrama-clases.md`](docs/diagrama-clases.md) describe el prototipo local de la etapa anterior.
 
@@ -243,7 +248,7 @@ El detalle de la red está en [`docs/arquitectura-red.md`](docs/arquitectura-red
 * [x] Movimiento Top-Down.
 * [x] Cámara y colisiones.
 * [x] Sistema de disparos.
-* [x] Servidor.
+* [x] Servidor (en un repositorio propio).
 * [x] Comunicación UDP (con descubrimiento por broadcast).
 * [x] Sincronización de jugadores.
 * [x] Sincronización de proyectiles.

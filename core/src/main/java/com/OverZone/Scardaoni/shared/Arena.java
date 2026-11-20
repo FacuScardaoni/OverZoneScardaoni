@@ -1,8 +1,15 @@
-package com.OverZone.Scardaoni.world;
+/*
+ * ARCHIVO COMPARTIDO entre los dos repositorios:
+ *   - OverZoneScardaoni         (cliente)
+ *   - OverZoneScardaoni-Server  (servidor)
+ * Tiene que ser IDÉNTICO en los dos. Si lo cambiás en uno, copialo al otro.
+ * Si cambia el formato de algún mensaje, subí también Protocol.VERSION, así
+ * un cliente y un servidor de versiones distintas se avisan en lugar de fallar.
+ */
+package com.OverZone.Scardaoni.shared;
 
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
-import com.OverZone.Scardaoni.entities.Obstacle;
 
 import java.util.ArrayList;
 import java.util.List;
