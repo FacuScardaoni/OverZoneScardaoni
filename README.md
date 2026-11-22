@@ -74,6 +74,20 @@ Combatiente pesado especializado en resistencia y daño. Posee una gran cantidad
 
 Activa un escudo frontal capaz de absorber parte del daño recibido durante algunos segundos.
 
+### Comparación
+
+| | Volt | Brutus |
+| --- | --- | --- |
+| Rol | Asalto | Tanque |
+| Vida | 100 | 180 |
+| Velocidad | 140 | 100 |
+| Daño por disparo | 25 | 40 |
+| Tiempo entre disparos | 0,22 s | 0,45 s |
+| Habilidad | Impulso Over: dash de 0,18 s a más del triple de velocidad | Escudo Cinético: durante 3 s absorbe el 70 % del daño que llega de frente |
+| Recarga de la habilidad | 3 s | 8 s |
+
+Cada jugador elige su personaje en la sala de espera (teclas `1` y `2` o con el mouse). Las estadísticas están definidas en `CharacterType`, dentro del paquete compartido `shared`.
+
 ## Arquitectura de red
 
 OverZone utiliza una arquitectura **Cliente-Servidor con servidor autoritativo**, con toda la comunicación sobre **UDP**.
@@ -209,9 +223,12 @@ Los dos programas requieren **Java 21**.
 * Manejo de errores de red: puerto ocupado, servidor no encontrado, partida llena, desconexión de un cliente (avisada o por tiempo de espera), cierre o caída del servidor, y cierre ordenado de sockets e hilos.
 * Simulación de retardo y pérdida de paquetes desde la consola del servidor.
 
-Pendiente: el segundo personaje (Brutus, con Escudo Cinético) y los recursos gráficos definitivos. Por ahora todos los jugadores usan a Volt, diferenciados por el color de su equipo.
+* Dos personajes jugables, Volt y Brutus, con estadísticas y habilidades distintas, elegibles en la sala de espera.
+* Sprites animados de los dos personajes (caminata en cuatro direcciones), proyectiles, Escudo Cinético y mapa con texturas de estilo ciencia ficción. Los jugadores se distinguen por el anillo del color de su equipo.
 
-**Controles:** `W A S D` moverse · Mouse apuntar · Click izquierdo disparar · Click derecho o `Espacio` Impulso Over · `ESC` menú de pausa · `M` silenciar · `+`/`-` volumen. En red, la pausa no detiene la partida: el personaje se queda quieto mientras el menú está abierto.
+Los recursos gráficos se generan con el script `tools/generar_sprites.py` (y el sonido del escudo con `tools/generar_sonido_escudo.py`), así que se pueden modificar cambiando colores o medidas y volviendo a ejecutarlo.
+
+**Controles:** `W A S D` moverse · Mouse apuntar · Click izquierdo disparar · Click derecho o `Espacio` habilidad (Impulso Over o Escudo Cinético) · `1`/`2` elegir personaje en la sala · `ESC` menú de pausa · `M` silenciar · `+`/`-` volumen. En red, la pausa no detiene la partida: el personaje se queda quieto mientras el menú está abierto.
 
 **Video de demostración:** _(agregar aquí el enlace a YouTube/Google Drive con permisos de visualización para los docentes)._
 
@@ -228,7 +245,7 @@ Este repositorio tiene dos módulos: `core` (el juego) y `lwjgl3` (el lanzador p
 
 | Paquete | Contenido |
 | --- | --- |
-| `shared` | **Compartido con el servidor:** `Protocol`, `PlayerInput`, `WorldSnapshot`, `MatchPhase`, `Team`, `Direction`, `GameConstants`, `Arena`, `Obstacle`. |
+| `shared` | **Compartido con el servidor:** `Protocol`, `PlayerInput`, `WorldSnapshot`, `MatchPhase`, `Team`, `Direction`, `CharacterType`, `GameConstants`, `Arena`, `Obstacle`. |
 | `network` | `ClientNetwork`: búsqueda del servidor, conexión y recepción del estado. |
 | `input` | `PlayerInputProcessor`: captura teclado y mouse. |
 | `graphics` | `DirectionalAnimation`: animación desde spritesheet. |
@@ -261,8 +278,9 @@ El detalle de la red está en [`docs/arquitectura-red.md`](docs/arquitectura-red
 * [x] Temporizador.
 * [x] HUD.
 * [x] Pantalla de resultados.
-* [ ] Segundo personaje (Brutus).
-* [ ] Recursos gráficos definitivos.
+* [x] Segundo personaje (Brutus).
+* [x] Sprites y animaciones de los personajes y texturas del mapa.
+* [ ] Modo de juego local.
 * [ ] Pruebas con múltiples clientes.
 * [ ] Pruebas en red LAN.
 * [ ] Optimización y corrección de errores.

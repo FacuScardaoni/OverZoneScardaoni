@@ -4,6 +4,30 @@ Todos los cambios importantes realizados en **OverZone** serán documentados en 
 
 El formato utilizado está basado en el estándar **Keep a Changelog**, organizando las modificaciones desde las más recientes hasta las más antiguas.
 
+## [0.5.0] - 2026-11-19
+
+Segundo personaje jugable y nuevos recursos gráficos.
+
+### Agregado
+
+* **Brutus** (Titan Force, Tanque): 180 de vida, velocidad 100, 40 de daño por disparo y menor cadencia.
+* **Escudo Cinético**: escudo frontal que durante 3 segundos absorbe el 70 % del daño que llega de frente; sigue la dirección del mouse y se recarga en 8 segundos.
+* `CharacterType` (paquete `shared`): estadísticas y habilidad de cada personaje en un solo lugar.
+* Elección de personaje en la sala de espera, con retrato y estadísticas de cada uno (teclas `1` y `2` o con el mouse).
+* Sprites animados de Volt y Brutus, con caminata en cuatro direcciones.
+* Texturas nuevas del mapa: piso metálico, paredes perimetrales, bloques de cobertura con Núcleo Over, marca central y zonas de aparición de cada equipo.
+* Proyectiles distintos para cada personaje, efecto visual del escudo, anillo del color del equipo bajo cada jugador y sonido del escudo.
+* Scripts `tools/generar_sprites.py` y `tools/generar_sonido_escudo.py`, que generan esos recursos.
+
+### Cambiado
+
+* Protocolo versión 2: el `PING` incluye el personaje elegido y el estado de cada jugador incluye su personaje, si tiene la habilidad activa y la dirección del escudo.
+* El HUD muestra el personaje, su vida máxima y el nombre de su habilidad. Los resultados muestran el personaje de cada jugador.
+
+### Eliminado
+
+* Imágenes del prototipo que ya no se usan (`player_walk.png`, `enemy_dummy.png`, `obstacle.png`, `projectile_player.png`, `projectile_enemy.png`).
+
 ## [0.4.0] - 2026-11-19
 
 Separación del cliente y el servidor en dos repositorios.

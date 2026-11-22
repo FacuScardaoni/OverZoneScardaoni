@@ -1,5 +1,6 @@
 package com.OverZone.Scardaoni.network;
 
+import com.OverZone.Scardaoni.shared.CharacterType;
 import com.OverZone.Scardaoni.shared.PlayerInput;
 import com.OverZone.Scardaoni.shared.Protocol;
 import com.OverZone.Scardaoni.shared.WorldSnapshot;
@@ -63,6 +64,7 @@ public class ClientNetwork {
     private volatile String serverName = "";
     private volatile int playerId = -1;
     private volatile boolean ready = false;
+    private volatile CharacterType character = CharacterType.VOLT;
     private volatile SnapshotPair snapshots = null;
     private volatile float pingMs = -1f;
 
@@ -313,7 +315,7 @@ public class ClientNetwork {
     }
 
     private void sendHeartbeat() {
-        send(Protocol.join(Protocol.PING, ready ? 1 : 0, System.nanoTime()));
+        send(Protocol.join(Protocol.PING, ready ? 1 : 0, character.id(), System.nanoTime()));
     }
 
     /**
@@ -369,6 +371,14 @@ public class ClientNetwork {
     }
 
     public boolean isReady() { return ready; }
+
+    /** Elige el personaje (el servidor solo lo acepta en la sala de espera). */
+    public void setCharacter(CharacterType character) {
+        this.character = character;
+        sendHeartbeat();
+    }
+
+    public CharacterType getCharacter() { return character; }
     public Status getStatus() { return status; }
     public String getFailureMessage() { return failureMessage; }
     public String getServerName() { return serverName; }

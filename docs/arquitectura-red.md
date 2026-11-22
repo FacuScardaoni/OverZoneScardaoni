@@ -36,7 +36,7 @@ Así, todos los clientes ven la misma partida: no puede haber dos clientes con r
 | --- | --- |
 | `OverZoneScardaoni` (cliente) | Pantallas, gráficos, audio, entrada y `ClientNetwork`. **No** contiene la lógica de la partida. |
 | `OverZoneScardaoni-Server` (servidor) | `GameServer`, `ConnectedClient`, `ServerLauncher` y, en `server.game`, `MatchSimulation`, `Player` y `Projectile`. |
-| Los dos (paquete `shared`) | `Protocol`, `PlayerInput`, `WorldSnapshot`, `MatchPhase`, `Team`, `Direction`, `GameConstants`, `Arena`, `Obstacle`. |
+| Los dos (paquete `shared`) | `Protocol`, `PlayerInput`, `WorldSnapshot`, `MatchPhase`, `Team`, `Direction`, `CharacterType`, `GameConstants`, `Arena`, `Obstacle`. |
 
 El paquete `shared` está copiado en los dos repositorios y tiene que ser idéntico en ambos. Para que una diferencia no pase desapercibida, el cliente envía `Protocol.VERSION` al conectarse: si no coincide con la del servidor, la conexión se rechaza (`REJECT;VERSION`) y el cliente muestra qué versión tiene cada uno.
 
@@ -64,7 +64,7 @@ Todos son texto con los campos separados por `;`. Los números con decimales sie
 | `WELCOME;id` | Servidor → cliente | Aceptado; se le asigna un número de jugador. |
 | `REJECT;FULL` / `REJECT;UNKNOWN` / `REJECT;VERSION;v` | Servidor → cliente | Partida llena / el servidor no conoce a este cliente / versión de protocolo distinta. |
 | `INPUT;seq;moveX;moveY;aimX;aimY;fire;contadorHabilidad` | Cliente → servidor | Entradas del jugador, una por frame. |
-| `PING;listo;marcaDeTiempo` | Cliente → servidor | Latido cada 250 ms; además informa si el jugador marcó "listo". |
+| `PING;listo;personaje;marcaDeTiempo` | Cliente → servidor | Latido cada 250 ms; además informa si el jugador marcó "listo" y qué personaje eligió (el servidor solo acepta el cambio en la sala de espera). |
 | `PONG;marcaDeTiempo` | Servidor → cliente | Devuelve la marca: el cliente calcula el retardo de ida y vuelta. |
 | `STATE;seq;fase;tiempo;...` | Servidor → clientes | Estado completo de la partida, 30 veces por segundo. |
 | `DISCONNECT` | Cliente → servidor | Me voy (se envía dos veces). |
@@ -81,7 +81,7 @@ sequenceDiagram
     C->>S: CONNECT;Facu;1
     S-->>C: WELCOME;2
     loop Cada 250 ms
-        C->>S: PING;0;marca
+        C->>S: PING;0;1;marca
         S-->>C: PONG;marca
     end
     loop 30 veces por segundo

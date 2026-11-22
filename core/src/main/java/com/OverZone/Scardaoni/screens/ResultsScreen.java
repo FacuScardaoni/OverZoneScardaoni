@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
 import com.OverZone.Scardaoni.Main;
+import com.OverZone.Scardaoni.shared.CharacterType;
 import com.OverZone.Scardaoni.shared.MatchPhase;
 import com.OverZone.Scardaoni.shared.Team;
 import com.OverZone.Scardaoni.network.ClientNetwork;
@@ -109,15 +110,17 @@ public class ResultsScreen extends BaseMenuScreen {
         drawCentered(font, snap.scoreRed + " Rojo", WIDTH / 2f + 60, 188);
 
         font.setColor(Color.GRAY);
-        font.draw(batch, "Jugador", 75, 143);
-        font.draw(batch, "Equipo", 220, 143);
+        font.draw(batch, "Jugador", 70, 143);
+        font.draw(batch, "Personaje", 160, 143);
+        font.draw(batch, "Equipo", 235, 143);
         font.draw(batch, "Elim.", 300, 143);
         font.draw(batch, "Muertes", 350, 143);
         float y = 125;
         for (WorldSnapshot.PlayerState p : snap.players) {
             font.setColor(p.id == net.getPlayerId() ? Color.YELLOW : Color.WHITE);
-            font.draw(batch, p.name, 75, y);
-            font.draw(batch, Team.name(p.team), 220, y);
+            font.draw(batch, p.name, 70, y);
+            font.draw(batch, CharacterType.fromId(p.character).displayName, 160, y);
+            font.draw(batch, Team.name(p.team), 235, y);
             font.draw(batch, String.valueOf(p.kills), 310, y);
             font.draw(batch, String.valueOf(p.deaths), 370, y);
             y -= 16;

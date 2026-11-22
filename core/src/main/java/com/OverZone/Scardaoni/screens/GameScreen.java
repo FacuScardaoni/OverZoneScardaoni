@@ -17,7 +17,6 @@ import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.OverZone.Scardaoni.Main;
 import com.OverZone.Scardaoni.audio.AudioManager;
-import com.OverZone.Scardaoni.shared.Obstacle;
 import com.OverZone.Scardaoni.shared.MatchPhase;
 import com.OverZone.Scardaoni.shared.Team;
 import com.OverZone.Scardaoni.graphics.DirectionalAnimation;
@@ -26,7 +25,9 @@ import com.OverZone.Scardaoni.network.ClientNetwork;
 import com.OverZone.Scardaoni.shared.WorldSnapshot;
 import com.OverZone.Scardaoni.ui.Hud;
 import com.OverZone.Scardaoni.shared.Arena;
+import com.OverZone.Scardaoni.shared.CharacterType;
 import com.OverZone.Scardaoni.shared.GameConstants;
+import com.OverZone.Scardaoni.shared.Obstacle;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -49,8 +50,14 @@ public class GameScreen implements Screen {
     /** Si un jugador se movió más que esto entre dos estados, reapareció: no se interpola. */
     private static final float TELEPORT_DISTANCE = 80f;
 
-    private static final Color BLUE_TINT = new Color(0.65f, 0.8f, 1f, 1f);
-    private static final Color RED_TINT = new Color(1f, 0.65f, 0.65f, 1f);
+    /** Colores de cada equipo (anillo bajo los pies y proyectiles). */
+    private static final Color BLUE_TEAM = new Color(0.40f, 0.65f, 1f, 1f);
+    private static final Color RED_TEAM = new Color(1f, 0.42f, 0.42f, 1f);
+    /** Tono que toma Volt mientras usa el Impulso Over. */
+    private static final Color DASH_TINT = new Color(0.55f, 1f, 1f, 0.85f);
+
+    /** Medidas de las zonas de aparición pintadas en el piso (coinciden con el servidor). */
+    private static final float SPAWN_ZONE_W = 72f, SPAWN_ZONE_H = 168f, SPAWN_MARGIN_X = 90f;
 
     private final Main game;
     private final AudioManager audio;
@@ -65,9 +72,14 @@ public class GameScreen implements Screen {
     private final BitmapFont labelFont;
     private final GlyphLayout layout = new GlyphLayout();
 
-    private Texture playerSheet, obstacleTexture, floorTexture, projOwnTex, projEnemyTex;
-    private DirectionalAnimation playerAnimation;
-    private TextureRegion floorRegion;
+    // --- Recursos gráficos ---
+    private Texture voltSheet, brutusSheet;
+    /** Una animación por personaje, ordenadas como CharacterType (0 = Volt, 1 = Brutus). */
+    private DirectionalAnimation[] animations;
+    private Texture[] projectileTextures;
+    private Texture floorTexture, wallTexture, wallVerticalTexture, coverTexture;
+    private Texture coreDecal, spawnBlue, spawnRed, teamRing, shieldTexture;
+    private TextureRegion floorRegion, shieldRegion;
 
     private float animationTimer = 0f;
     private boolean disposed = false;
@@ -77,7 +89,7 @@ public class GameScreen implements Screen {
     private Set<Integer> knownProjectiles = new HashSet<>();
     private float lastHealth = -1f;
     private int lastScoreTotal = -1;
-    private boolean wasDashing = false;
+    private boolean wasUsingAbility = false;
 
     public GameScreen(Main game) {
         this.game = game;
@@ -96,17 +108,36 @@ public class GameScreen implements Screen {
     }
 
     private void loadAssets() {
-        playerSheet = new Texture(Gdx.files.internal("player_walk.png"));
-        playerAnimation = new DirectionalAnimation(playerSheet, 32, 32, 4, 0.12f);
+        voltSheet = new Texture(Gdx.files.internal("volt_walk.png"));
+        brutusSheet = new Texture(Gdx.files.internal("brutus_walk.png"));
+        animations = new DirectionalAnimation[] {
+            new DirectionalAnimation(voltSheet, 32, 32, 4, 0.10f),    // Volt camina más rápido
+            new DirectionalAnimation(brutusSheet, 32, 32, 4, 0.16f)   // Brutus, más pesado
+        };
+        projectileTextures = new Texture[] {
+            new Texture(Gdx.files.internal("projectile_volt.png")),
+            new Texture(Gdx.files.internal("projectile_brutus.png"))
+        };
 
-        obstacleTexture = new Texture(Gdx.files.internal("obstacle.png"));
-
-        floorTexture = new Texture(Gdx.files.internal("floor_tile.png"));
-        floorTexture.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
+        floorTexture = repeating("floor_tile.png");
         floorRegion = new TextureRegion(floorTexture, 0, 0, (int) Arena.WIDTH, (int) Arena.HEIGHT);
+        wallTexture = repeating("wall_tile.png");
+        wallVerticalTexture = repeating("wall_tile_v.png");
+        coverTexture = new Texture(Gdx.files.internal("cover_block.png"));
 
-        projOwnTex = new Texture(Gdx.files.internal("projectile_player.png"));
-        projEnemyTex = new Texture(Gdx.files.internal("projectile_enemy.png"));
+        coreDecal = new Texture(Gdx.files.internal("core_decal.png"));
+        spawnBlue = new Texture(Gdx.files.internal("spawn_blue.png"));
+        spawnRed = new Texture(Gdx.files.internal("spawn_red.png"));
+        teamRing = new Texture(Gdx.files.internal("team_ring.png"));
+        shieldTexture = new Texture(Gdx.files.internal("shield.png"));
+        shieldRegion = new TextureRegion(shieldTexture);
+    }
+
+    /** Carga una textura que se repite (como baldosas) al dibujar un área más grande. */
+    private static Texture repeating(String file) {
+        Texture t = new Texture(Gdx.files.internal(file));
+        t.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
+        return t;
     }
 
     @Override
@@ -126,7 +157,7 @@ public class GameScreen implements Screen {
 
         ClientNetwork net = game.getNetwork();
         animationTimer += delta;
-        playerAnimation.update(delta);
+        for (DirectionalAnimation animation : animations) animation.update(delta);
 
         if (input.isMuteJustPressed()) audio.MutearDesmutear();
         if (input.isVolumeUpJustPressed()) audio.SubirVolumen();
@@ -216,8 +247,11 @@ public class GameScreen implements Screen {
         if (me != null) {
             if (lastHealth >= 0 && me.health < lastHealth) audio.playHit();
             lastHealth = me.health;
-            if (me.dashing && !wasDashing) audio.playDash();
-            wasDashing = me.dashing;
+            if (me.abilityActive && !wasUsingAbility) {
+                if (CharacterType.fromId(me.character) == CharacterType.BRUTUS) audio.playShield();
+                else audio.playDash();
+            }
+            wasUsingAbility = me.abilityActive;
         }
 
         int scoreTotal = snap.scoreBlue + snap.scoreRed;
@@ -255,34 +289,48 @@ public class GameScreen implements Screen {
         batch.setProjectionMatrix(worldCamera.combined);
         batch.begin();
 
-        batch.draw(floorRegion, 0, 0, Arena.WIDTH, Arena.HEIGHT);
+        drawMap();
 
-        for (Obstacle obstacle : arena.getObstacles()) {
-            Rectangle b = obstacle.getBounds();
-            batch.draw(obstacleTexture, b.x, b.y, b.width, b.height);
-        }
-
-        // Jugadores, teñidos con el color de su equipo.
+        // Jugadores: anillo del color del equipo, sprite del personaje y, si
+        // Brutus tiene el escudo activo, el arco del escudo hacia donde apunta.
         for (WorldSnapshot.PlayerState p : snap.players) {
             if (!p.alive) continue;
-            boolean visible = !p.invulnerable || ((int) (animationTimer * 12) % 2 == 0);
-            if (!visible) continue;
             float x = lerpX(pair, p, alpha);
             float y = lerpY(pair, p, alpha);
-            batch.setColor(p.team == Team.BLUE ? BLUE_TINT : RED_TINT);
-            TextureRegion frame = playerAnimation.getFrame(p.facing, p.moving);
-            batch.draw(frame, x - GameConstants.PLAYER_SIZE / 2f, y - GameConstants.PLAYER_SIZE / 2f, GameConstants.PLAYER_SIZE, GameConstants.PLAYER_SIZE);
-        }
-        batch.setColor(Color.WHITE);
+            CharacterType type = CharacterType.fromId(p.character);
 
-        // Proyectiles: los de mi equipo con una imagen y los rivales con otra.
+            batch.setColor(p.team == Team.BLUE ? BLUE_TEAM : RED_TEAM);
+            batch.draw(teamRing, x - 16, y - 18, 32, 16);
+            batch.setColor(Color.WHITE);
+
+            boolean visible = !p.invulnerable || ((int) (animationTimer * 12) % 2 == 0);
+            if (visible) {
+                if (p.abilityActive && type == CharacterType.VOLT) batch.setColor(DASH_TINT);
+                TextureRegion frame = animations[type.id()].getFrame(p.facing, p.moving);
+                float size = GameConstants.PLAYER_DRAW_SIZE;
+                // El sprite se dibuja un poco más arriba que el centro, para
+                // que los pies queden sobre el anillo.
+                batch.draw(frame, x - size / 2f, y - size / 2f + 4, size, size);
+                batch.setColor(Color.WHITE);
+            }
+
+            if (p.abilityActive && type == CharacterType.BRUTUS) {
+                // El dibujo del escudo apunta a la derecha; se rota según el ángulo.
+                batch.draw(shieldRegion, x - 24, y - 24, 24, 24, 48, 48, 1f, 1f, p.shieldAngle);
+            }
+        }
+
+        // Proyectiles: imagen según el personaje que disparó, teñida con el color del equipo.
         for (WorldSnapshot.ProjectileState p : snap.projectiles) {
             WorldSnapshot.ProjectileState before = pair.previous.findProjectile(p.id);
             float x = before == null ? p.x : MathUtils.lerp(before.x, p.x, alpha);
             float y = before == null ? p.y : MathUtils.lerp(before.y, p.y, alpha);
-            Texture tex = p.team == myTeam ? projOwnTex : projEnemyTex;
-            batch.draw(tex, x - GameConstants.PROJECTILE_SIZE / 2f, y - GameConstants.PROJECTILE_SIZE / 2f, GameConstants.PROJECTILE_SIZE, GameConstants.PROJECTILE_SIZE);
+            CharacterType type = CharacterType.fromId(p.character);
+            float size = type.projectileSize * 1.5f;   // el brillo es más grande que el área de choque
+            batch.setColor(p.team == Team.BLUE ? BLUE_TEAM : RED_TEAM);
+            batch.draw(projectileTextures[type.id()], x - size / 2f, y - size / 2f, size, size);
         }
+        batch.setColor(Color.WHITE);
 
         // Nombres sobre cada jugador.
         for (WorldSnapshot.PlayerState p : snap.players) {
@@ -291,13 +339,36 @@ public class GameScreen implements Screen {
             labelFont.setColor(isMe ? Color.YELLOW : (p.team == Team.BLUE ? Color.SKY : Color.SALMON));
             String label = isMe ? "Vos" : p.name;
             layout.setText(labelFont, label);
-            labelFont.draw(batch, label, lerpX(pair, p, alpha) - layout.width / 2f, lerpY(pair, p, alpha) + GameConstants.PLAYER_SIZE);
+            labelFont.draw(batch, label, lerpX(pair, p, alpha) - layout.width / 2f,
+                lerpY(pair, p, alpha) + GameConstants.PLAYER_DRAW_SIZE / 2f + 12);
         }
 
         batch.end();
 
         hud.getViewport().apply();
         hud.render(batch, me, snap, audio.isMuted(), audio.getVolume(), pingMs);
+    }
+
+    /** Piso, marcas en el piso, paredes y bloques de cobertura. */
+    private void drawMap() {
+        batch.draw(floorRegion, 0, 0, Arena.WIDTH, Arena.HEIGHT);
+
+        float zoneY = Arena.HEIGHT / 2f - SPAWN_ZONE_H / 2f;
+        batch.draw(spawnBlue, SPAWN_MARGIN_X - SPAWN_ZONE_W / 2f, zoneY);
+        batch.draw(spawnRed, Arena.WIDTH - SPAWN_MARGIN_X - SPAWN_ZONE_W / 2f, zoneY);
+        batch.draw(coreDecal, Arena.WIDTH / 2f - coreDecal.getWidth() / 2f, Arena.HEIGHT / 2f - coreDecal.getHeight() / 2f);
+
+        for (Obstacle obstacle : arena.getObstacles()) {
+            Rectangle b = obstacle.getBounds();
+            if (b.width == coverTexture.getWidth() && b.height == coverTexture.getHeight()) {
+                batch.draw(coverTexture, b.x, b.y, b.width, b.height);
+            } else {
+                // Las paredes se arman repitiendo la baldosa a lo largo:
+                // horizontal o vertical según la forma de la pared.
+                Texture tile = b.width >= b.height ? wallTexture : wallVerticalTexture;
+                batch.draw(tile, b.x, b.y, b.width, b.height, 0, 0, (int) b.width, (int) b.height, false, false);
+            }
+        }
     }
 
     // ------------------------------------------------------------------
@@ -330,10 +401,16 @@ public class GameScreen implements Screen {
         batch.dispose();
         hud.dispose();
         labelFont.dispose();
-        playerAnimation.dispose(); // libera playerSheet
-        obstacleTexture.dispose();
+        for (DirectionalAnimation animation : animations) animation.dispose(); // libera las hojas de sprites
+        for (Texture t : projectileTextures) t.dispose();
         floorTexture.dispose();
-        projOwnTex.dispose();
-        projEnemyTex.dispose();
+        wallTexture.dispose();
+        wallVerticalTexture.dispose();
+        coverTexture.dispose();
+        coreDecal.dispose();
+        spawnBlue.dispose();
+        spawnRed.dispose();
+        teamRing.dispose();
+        shieldTexture.dispose();
     }
 }

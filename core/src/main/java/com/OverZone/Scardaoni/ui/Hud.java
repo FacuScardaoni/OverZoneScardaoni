@@ -8,12 +8,12 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
-import com.OverZone.Scardaoni.shared.GameConstants;
+import com.OverZone.Scardaoni.shared.CharacterType;
 import com.OverZone.Scardaoni.shared.Team;
 import com.OverZone.Scardaoni.shared.WorldSnapshot;
 
 /**
- * Interfaz fija sobre el juego: vida, habilidad, reloj, puntaje por equipo,
+ * Interfaz fija sobre el juego: personaje y vida, habilidad, reloj, puntaje por equipo,
  * retardo de red y volumen. Tiene su propia cámara, que no se mueve.
  *
  * Todo lo que muestra lo recibe por parámetro (datos que llegaron del
@@ -57,8 +57,9 @@ public class Hud {
 
         float healthY = VIRTUAL_HEIGHT - 26;
         float dashY = VIRTUAL_HEIGHT - 44;
-        float healthRatio = me == null ? 0f : Math.max(0f, me.health / GameConstants.PLAYER_MAX_HEALTH);
-        float abilityReady = me == null ? 0f : 1f - me.dashCooldown;
+        CharacterType character = me == null ? CharacterType.VOLT : CharacterType.fromId(me.character);
+        float healthRatio = me == null ? 0f : Math.max(0f, me.health / character.maxHealth);
+        float abilityReady = me == null ? 0f : 1f - me.abilityCooldown;
 
         shapes.setProjectionMatrix(camera.combined);
         shapes.begin(ShapeRenderer.ShapeType.Filled);
@@ -80,9 +81,10 @@ public class Hud {
         batch.begin();
 
         font.setColor(Color.WHITE);
-        font.draw(batch, "Vida  " + (me == null ? 0 : (int) me.health), MARGIN, VIRTUAL_HEIGHT - 8);
-        font.setColor(abilityReady >= 1f ? Color.CYAN : Color.GRAY);
-        font.draw(batch, "Impulso Over", MARGIN + BAR_WIDTH + 8, dashY + 9);
+        font.draw(batch, character.displayName + "  " + (me == null ? 0 : (int) me.health)
+            + " / " + (int) character.maxHealth, MARGIN, VIRTUAL_HEIGHT - 8);
+        font.setColor(me != null && me.abilityActive ? Color.ORANGE : (abilityReady >= 1f ? Color.CYAN : Color.GRAY));
+        font.draw(batch, character.abilityName, MARGIN + BAR_WIDTH + 8, dashY + 9);
 
         // Reloj
         font.setColor(Color.WHITE);

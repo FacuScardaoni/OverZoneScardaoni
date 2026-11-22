@@ -23,10 +23,11 @@ public class ControlsScreen extends BaseMenuScreen {
         {"Moverse",              "W  A  S  D"},
         {"Apuntar",              "Mouse"},
         {"Disparar",             "Click izquierdo"},
-        {"Impulso Over (dash)",  "Click derecho / Espacio"},
+        {"Habilidad especial",   "Click derecho / Espacio"},
         {"Pausa",                "ESC"},
         {"Silenciar sonido",     "M"},
-        {"Subir / bajar volumen","+  /  -"}
+        {"Subir / bajar volumen","+  /  -"},
+        {"Elegir personaje (sala)", "1 Volt  /  2 Brutus"}
     };
 
     public ControlsScreen(Main game, Screen previousScreen) {
@@ -76,7 +77,7 @@ public class ControlsScreen extends BaseMenuScreen {
     @Override
     protected void drawShapes(Vector3 mouse) {
         shapes.setColor(0.12f, 0.14f, 0.2f, 1f);
-        shapes.rect(50, 55, 380, 165);
+        shapes.rect(50, 52, 380, 178);
         drawButton(backButton, mouse, 0.25f, 0.5f, 0.85f);
     }
 
@@ -85,7 +86,7 @@ public class ControlsScreen extends BaseMenuScreen {
         titleFont.setColor(Color.WHITE);
         drawCentered(titleFont, "Controles", WIDTH / 2f, 250);
 
-        float y = 205;
+        float y = 218;
         for (String[] row : CONTROLS) {
             font.setColor(Color.LIGHT_GRAY);
             font.draw(batch, row[0], 70, y);
