@@ -4,6 +4,170 @@ Todos los cambios importantes realizados en **OverZone** serán documentados en 
 
 El formato utilizado está basado en el estándar **Keep a Changelog**, organizando las modificaciones desde las más recientes hasta las más antiguas.
 
+## [0.7.1] - 2026-11-24
+
+Power-Ups y arreglo de la elección del modo de juego. **Cambia el protocolo (versión 4): hay que actualizar también el servidor.**
+
+### Agregado
+
+* **Power-Ups temporales** (`PowerUpType`): Botiquín (+50 de vida), Turbo (+35 % de velocidad, 6 s), Sobrecarga (+50 % de daño, 6 s) y Blindaje (mitad de daño recibido, 6 s). Aparecen en cinco puntos del mapa (`Arena.POWERUP_SPAWNS`): el primero a los 5 s y después cada 8 s, hasta 3 a la vez.
+* Íconos de los Power-Ups y base en el piso que late (`tools/generar_powerups.py`), aura del color del efecto en los jugadores que tienen uno, texto "¡TURBO!" (o el que corresponda) sobre quien lo agarra y sonido `powerup.wav`.
+* HUD: debajo del panel del personaje se ven los Power-Ups activos con los segundos que les quedan; titilan cuando están por terminar.
+* El estado (`STATE`) agrega la lista de Power-Ups del mapa y, por jugador, el tiempo restante de cada efecto.
+
+### Corregido
+
+* **Contador de eliminaciones en Todos contra todos:** el recuadro derecho del HUD mostraba al jugador que iba primero, y si el primero eras vos, los dos recuadros mostraban tus propias eliminaciones (con 2 jugadores, cada eliminación parecía sumar en los dos lados). Ahora el izquierdo muestra las tuyas y el derecho las de tu **mejor rival**, y debajo se ve tu puesto (por ejemplo, "VOS 1°/2 | RIVAL: FACU").
+* Resultados de Todos contra todos: los jugadores empatados comparten el puesto en el ranking (antes salían como #1 y #2 aunque el título dijera "EMPATE").
+* El sonido de eliminación se calcula por jugador: antes, si alguien se iba justo cuando otro eliminaba, no sonaba.
+* Cambiar el modo a veces no reaccionaba. Antes el cliente mandaba en cada `PING` "el modo que quiero" y el servidor solo reaccionaba cuando ese valor cambiaba, así que un pedido rechazado podía dejar el botón trabado hasta elegir el otro modo y volver. Ahora cada pedido es **numerado** (como el contador de la habilidad): el servidor atiende cada número una sola vez, sobrevive a la pérdida de paquetes y cada clic es un pedido nuevo.
+* El pedido se envía en el momento del clic, sin esperar al próximo `PING`.
+
+### Cambiado
+
+* La sala de espera explica por qué no se puede cambiar el modo: "Solo el anfitrión (nombre) puede cambiar el modo" o "Equipos 2v2 necesita exactamente 4 jugadores (hay 3)".
+* El botón del modo pedido titila mientras espera la confirmación del servidor, y aparece "Modo: ..." cuando se aplica. Si no se aplica en 1,5 s, se avisa.
+* El anfitrión ve "SOS EL ANFITRIÓN" en el panel del modo, y los demás jugadores reciben un aviso cuando el modo cambia.
+* La tecla `M` alterna a partir del modo pedido, así apretarla dos veces seguidas funciona bien.
+
+## [0.7.0] - 2026-11-22
+
+Hasta 4 jugadores, dos modos de juego y los personajes del alcance deseable. **Cambia el protocolo (versión 3): hay que actualizar también el servidor.**
+
+### Agregado
+
+* **Modos de juego:** Todos contra todos (2 a 4 jugadores, gana quien más elimina) y Equipos 2v2 (solo con exactamente 4 jugadores). `GameMode` en el paquete compartido.
+* **Anfitrión de la sala:** el primer jugador conectado elige el modo (botones o tecla `M`). El servidor valida el pedido: rechaza Equipos si no hay 4 jugadores y vuelve a Todos contra todos si alguien se va.
+* **Iris** (Aegis Protocol, Soporte): pulsos de energía de poco daño y el **Campo de Regeneración**, una zona que cura a los aliados durante 5 s.
+* **Phantom** (Shadow Syndicate, Asesino): muy rápido, disparos veloces de mucho daño y corto alcance, y el **Camuflaje Óptico**, que lo vuelve casi invisible para los rivales durante 4 s.
+* Alcance máximo de los disparos según el personaje.
+* Sprites de Iris y Phantom, proyectiles propios, textura del Campo de Regeneración, botones de súper con cruz y ojo tachado, y sonidos `heal.wav` y `camo.wav` (`tools/generar_sonidos_v07.py`).
+* Colores propios de cada jugador en Todos contra todos (azul, rojo, verde y violeta).
+
+### Cambiado
+
+* Sala de espera rediseñada: lista de hasta 4 jugadores con el anfitrión marcado, panel de modo de juego y cuatro tarjetas de personaje (teclas `1` a `4`).
+* HUD: en Todos contra todos muestra tus eliminaciones y las del jugador que va primero.
+* Resultados: en Todos contra todos, ranking por eliminaciones y "¡GANASTE!" o "GANÓ (nombre)".
+* El autoapuntado ignora a los aliados y a los Phantom camuflados.
+* Volt y Brutus ajustados a la propuesta: recarga de 10 s y 15 s, Volt con armadura azul, Brutus con detalles rojos, y Brutus camina más lento con el escudo activo.
+* El estado (`STATE`) agrega el modo, el anfitrión y los campos de regeneración; el `PING` agrega el modo pedido.
+
+## [0.6.0] - 2026-11-22
+
+Rediseño de la interfaz: HUD con botones de ataque y súper, y menús con estilo futurista. Solo cambia el cliente; el servidor y el protocolo no se modifican.
+
+### Agregado
+
+* **Botón de ataque** (rojo, con mira de francotirador) y **botón de súper** (amarillo) en el HUD, que funcionan como joysticks: se arrastran para apuntar y al soltarlos se dispara o se usa la habilidad. Si solo se tocan, el disparo apunta al enemigo más cercano.
+* Línea de mira en el mapa mientras se apunta con el botón rojo, flecha del Impulso Over y cono del Escudo Cinético mientras se apunta con el amarillo.
+* El botón de súper muestra un anillo de carga y brilla cuando la habilidad está lista.
+* `UiKit`: fuentes y texturas de la interfaz compartidas por todas las pantallas. Fuentes Russo One y Chakra Petch (licencia OFL), generadas con FreeType; ahora se pueden usar tildes y eñes en los textos.
+* `MenuBackground`: fondo animado de los menús, con grilla en perspectiva, chispas, líneas de velocidad y explosiones de energía.
+* `UiDraw`: paneles con esquinas biseladas y brillos de neón.
+* Logo de OverZone e imágenes de los botones, generados con `tools/generar_ui.py`.
+* Menú principal con logo, los dos personajes y navegación con flechas y ENTER.
+
+### Cambiado
+
+* HUD rediseñado: panel del personaje con barra de vida segmentada y recarga de la habilidad, reloj con puntaje de cada equipo y aviso de "ELIMINADO". El HUD se adapta a la forma de la ventana y queda pegado a sus bordes.
+* Todas las pantallas de menú usan el nuevo estilo: botones de neón con animación al pasar el mouse, paneles translúcidos y títulos con efecto de color.
+
+## [0.5.0] - 2026-11-19
+
+Segundo personaje jugable y nuevos recursos gráficos.
+
+### Agregado
+
+* **Brutus** (Titan Force, Tanque): 180 de vida, velocidad 100, 40 de daño por disparo y menor cadencia.
+* **Escudo Cinético**: escudo frontal que durante 3 segundos absorbe el 70 % del daño que llega de frente; sigue la dirección del mouse y se recarga en 8 segundos.
+* `CharacterType` (paquete `shared`): estadísticas y habilidad de cada personaje en un solo lugar.
+* Elección de personaje en la sala de espera, con retrato y estadísticas de cada uno (teclas `1` y `2` o con el mouse).
+* Sprites animados de Volt y Brutus, con caminata en cuatro direcciones.
+* Texturas nuevas del mapa: piso metálico, paredes perimetrales, bloques de cobertura con Núcleo Over, marca central y zonas de aparición de cada equipo.
+* Proyectiles distintos para cada personaje, efecto visual del escudo, anillo del color del equipo bajo cada jugador y sonido del escudo.
+* Scripts `tools/generar_sprites.py` y `tools/generar_sonido_escudo.py`, que generan esos recursos.
+
+### Cambiado
+
+* Protocolo versión 2: el `PING` incluye el personaje elegido y el estado de cada jugador incluye su personaje, si tiene la habilidad activa y la dirección del escudo.
+* El HUD muestra el personaje, su vida máxima y el nombre de su habilidad. Los resultados muestran el personaje de cada jugador.
+
+### Eliminado
+
+* Imágenes del prototipo que ya no se usan (`player_walk.png`, `enemy_dummy.png`, `obstacle.png`, `projectile_player.png`, `projectile_enemy.png`).
+
+## [0.4.0] - 2026-11-19
+
+Separación del cliente y el servidor en dos repositorios.
+
+### Cambiado
+
+* El servidor pasa a su propio repositorio, `OverZoneScardaoni-Server`, junto con la lógica de la partida (`MatchSimulation`, `Player`, `Projectile`). Este repositorio queda solo con el cliente.
+* Nuevo paquete `shared` con las clases que necesitan los dos programas (`Protocol`, `PlayerInput`, `WorldSnapshot`, `MatchPhase`, `Team`, `Direction`, `Arena`, `Obstacle`). Está copiado en los dos repositorios y debe mantenerse idéntico.
+* El cliente ya no usa las clases de la lógica de la partida: los tamaños y la vida máxima que necesita para dibujar están en `GameConstants`.
+
+### Agregado
+
+* `Protocol.VERSION`: el cliente envía su versión de protocolo y el servidor rechaza las conexiones con una versión distinta (`REJECT;VERSION`), mostrando un aviso claro en lugar de fallar.
+
+### Eliminado
+
+* Módulo `server` de este repositorio.
+
+## [0.3.0] - 2026-11-14
+
+Implementación de la arquitectura Cliente-Servidor sobre UDP. El juego pasa de un prototipo local contra torretas a partidas en red por equipos.
+
+### Agregado
+
+**Servidor (nuevo módulo `server`)**
+
+* `GameServer`: servidor autoritativo con un hilo de recepción y un bucle de juego de paso fijo (60 actualizaciones por segundo) que envía el estado completo a los clientes 30 veces por segundo.
+* `ServerLauncher`: programa independiente, ejecutable desde el cmd (`gradlew server:run` o `java -jar`), con comandos de consola `estado`, `retardo`, `perdida`, `normal` y `salir`.
+* Simulación de retardo y pérdida de paquetes desde la consola, para probar el comportamiento ante problemas de red.
+
+**Lógica de partida compartida (paquete `game`)**
+
+* `MatchSimulation`: la partida real, ejecutada solo en el servidor. Equipos Azul y Rojo, de 2 a 4 jugadores, eliminaciones, reaparición con protección, puntaje por equipo y temporizador.
+* `MatchPhase`: etapas de la partida (sala, cuenta regresiva, juego y resultados).
+
+**Red (paquete `network`)**
+
+* `Protocol`: mensajes de texto, puerto, tiempos de espera y frecuencias.
+* `ClientNetwork`: búsqueda del servidor por broadcast, conexión con reintentos, latido cada 250 ms, medición del ping y detección de conexión perdida.
+* `WorldSnapshot` y `PlayerInput`: estado de la partida y entradas del jugador, con número de secuencia para descartar paquetes viejos.
+
+**Pantallas**
+
+* `ConnectScreen`: búsqueda del servidor y conexión, con opción de reintentar.
+* `LobbyScreen`: sala de espera con equipos y marca de "listo".
+* `MessageScreen`: avisos de errores de red con regreso al menú.
+* `BaseMenuScreen`: clase base abstracta con el código común de las pantallas de menú.
+
+**Documentación**
+
+* `docs/arquitectura-red.md`: protocolo, hilos, manejo de errores y cumplimiento de los requisitos técnicos.
+
+### Cambiado
+
+* `GameScreen`: ya no simula la partida. Envía las entradas al servidor y dibuja el estado recibido, interpolando entre los dos últimos estados.
+* `Player` y `Projectile`: incorporan identificador y equipo; el jugador maneja eliminación, reaparición y estadísticas.
+* `Hud`: muestra el puntaje por equipo, el equipo propio, el ping y la cuenta para reaparecer.
+* `PauseScreen`: en red la partida no se detiene; ofrece reanudar, ver controles o desconectarse.
+* `ResultsScreen`: muestra victoria, derrota o empate por equipo y las estadísticas de cada jugador, y vuelve sola a la sala.
+* Las pantallas de menú heredan de `BaseMenuScreen`.
+* Al cambiar de pantalla se libera la anterior (`Main.replaceScreen`), lo que evita la acumulación de memoria.
+* Comunicación únicamente por UDP; la confiabilidad de los eventos importantes se resuelve con el envío del estado completo, números de secuencia y reintentos.
+
+### Eliminado
+
+* `EnemyDummy`: las torretas del prototipo local se reemplazan por el combate entre jugadores.
+
+### Corregido
+
+* Un disparo con el mouse ubicado exactamente sobre el jugador creaba un proyectil sin dirección que quedaba inmóvil para siempre.
+
 ## [0.2.3] - 2026-09-02
 
 * `README.md`: se actualizó el estado del proyecto, se incorporó la lista de controles, se agregó la descripción de la arquitectura del código por paquetes y se enlazó el documento del diagrama de clases.

@@ -1,57 +1,45 @@
 package com.OverZone.Scardaoni.screens;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
-import com.badlogic.gdx.utils.viewport.FitViewport;
-import com.badlogic.gdx.utils.viewport.Viewport;
 import com.OverZone.Scardaoni.Main;
+import com.OverZone.Scardaoni.ui.UiKit;
+import com.OverZone.Scardaoni.shared.MatchPhase;
 
+/**
+ * Lista de controles. Se abre desde el menú principal o desde la pausa, y al
+ * volver regresa a la pantalla desde la que se abrió.
+ */
+public class ControlsScreen extends BaseMenuScreen {
 
-public class ControlsScreen implements Screen {
-
-    private final Main game;
     private final Screen previousScreen;
-
-    private final OrthographicCamera camera = new OrthographicCamera();
-    private final Viewport viewport;
-    private final SpriteBatch batch = new SpriteBatch();
-    private final ShapeRenderer shapes = new ShapeRenderer();
-    private final BitmapFont titleFont = new BitmapFont();
-    private final BitmapFont font = new BitmapFont();
-
     private final Rectangle backButton = new Rectangle(190, 22, 100, 26);
 
     private static final String[][] CONTROLS = {
         {"Moverse",              "W  A  S  D"},
         {"Apuntar",              "Mouse"},
-        {"Disparar",             "Click izquierdo"},
-        {"Impulso Over (dash)",  "Click derecho / Espacio"},
+        {"Disparar",             "Click izquierdo  /  botón rojo"},
+        {"Habilidad especial",   "Click derecho  /  Espacio  /  botón amarillo"},
         {"Pausa",                "ESC"},
         {"Silenciar sonido",     "M"},
-        {"Subir / bajar volumen","+  /  -"}
+        {"Subir / bajar volumen","+  /  -"},
+        {"Elegir personaje (sala)", "1 Volt  2 Brutus  3 Iris  4 Phantom"},
+        {"Cambiar modo (sala)",  "M  (solo el anfitrión)"}
     };
 
     public ControlsScreen(Main game, Screen previousScreen) {
-        this.game = game;
+        super(game, 1.6f);
         this.previousScreen = previousScreen;
-        viewport = new FitViewport(480, 270, camera);
-        camera.position.set(240, 135, 0);
-        titleFont.getData().setScale(1.6f);
     }
 
     @Override
-    public void show() {
-        Gdx.input.setInputProcessor(new InputAdapter() {
+    protected InputProcessor createInputProcessor() {
+        return new InputAdapter() {
             @Override
             public boolean keyUp(int keycode) {
                 if (keycode == Input.Keys.ESCAPE) {
@@ -63,72 +51,51 @@ public class ControlsScreen implements Screen {
 
             @Override
             public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-                if (button != Input.Buttons.LEFT) return false;
-                Vector3 world = viewport.unproject(new Vector3(screenX, screenY, 0));
-                if (backButton.contains(world.x, world.y)) {
+                if (button == Input.Buttons.LEFT && clicked(backButton, screenX, screenY)) {
                     goBack();
                     return true;
                 }
                 return false;
             }
-        });
+        };
     }
 
+    /** Vuelve a la pantalla anterior (que sigue viva) y libera esta. */
     private void goBack() {
-        game.setScreen(previousScreen);
+        game.replaceScreen(previousScreen);
     }
 
     @Override
-    public void render(float delta) {
-        Gdx.gl.glClearColor(0.05f, 0.06f, 0.1f, 1f);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-        camera.update();
-
-        Vector3 mouseWorld = viewport.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
-        boolean hover = backButton.contains(mouseWorld.x, mouseWorld.y);
-
-        shapes.setProjectionMatrix(camera.combined);
-        shapes.begin(ShapeRenderer.ShapeType.Filled);
-        // Panel de fondo, para separar visualmente la lista del resto
-        shapes.setColor(0.12f, 0.14f, 0.2f, 1f);
-        shapes.rect(50, 55, 380, 165);
-        shapes.setColor(hover ? 0.35f : 0.25f, hover ? 0.6f : 0.5f, hover ? 0.95f : 0.85f, 1f);
-        shapes.rect(backButton.x, backButton.y, backButton.width, backButton.height);
-        shapes.end();
-
-        batch.setProjectionMatrix(camera.combined);
-        batch.begin();
-        titleFont.setColor(Color.WHITE);
-        titleFont.draw(batch, "Controles", 175, 250);
-
-        float y = 205;
-        for (String[] row : CONTROLS) {
-            font.setColor(Color.LIGHT_GRAY);
-            font.draw(batch, row[0], 70, y);
-            font.setColor(Color.WHITE);
-            font.draw(batch, row[1], 265, y);
-            y -= 21;
+    protected boolean update(float delta) {
+        // Si se abrió durante una partida en red, se sigue vigilando la
+        // conexión: si se cae o termina la partida, se sale de acá.
+        if (game.getNetwork() != null && game.followServer(MatchPhase.PLAYING)) {
+            previousScreen.dispose(); // la pausa (y con ella la partida) ya no se usa
+            return true;
         }
-
-        font.setColor(Color.WHITE);
-        font.draw(batch, "Volver", backButton.x + 30, backButton.y + 18);
-        batch.end();
+        return false;
     }
 
     @Override
-    public void resize(int width, int height) {
-        viewport.update(width, height, true);
+    protected void drawShapes(Vector3 mouse) {
+        drawPanel(50, 52, 380, 178, UiKit.CYAN);
+        drawButton(backButton, mouse, 0.25f, 0.5f, 0.85f);
     }
 
-    @Override public void pause() { }
-    @Override public void resume() { }
-    @Override public void hide() { }
-
     @Override
-    public void dispose() {
-        batch.dispose();
-        shapes.dispose();
-        titleFont.dispose();
-        font.dispose();
+    protected void drawText(Vector3 mouse) {
+        drawTitle("Controles", WIDTH / 2f, 256, Color.WHITE);
+
+        float y = 216;
+        for (String[] row : CONTROLS) {
+            smallFont.setColor(UiKit.CYAN);
+            smallFont.draw(batch, row[0].toUpperCase(), 66, y);
+            smallFont.setColor(Color.WHITE);
+            smallFont.draw(batch, row[1], 200, y);
+            y -= 16;
+        }
+        smallFont.setColor(Color.LIGHT_GRAY);
+        drawCentered(smallFont, "Botones del HUD: arrastrá para apuntar y soltá para disparar.", WIDTH / 2f, 64);
+        drawButtonLabel(backButton, "Volver");
     }
 }

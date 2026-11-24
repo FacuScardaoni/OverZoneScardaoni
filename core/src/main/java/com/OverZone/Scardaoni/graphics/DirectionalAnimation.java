@@ -1,5 +1,6 @@
 package com.OverZone.Scardaoni.graphics;
 
+import com.OverZone.Scardaoni.shared.Direction;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -7,10 +8,11 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
 public class DirectionalAnimation {
 
-    public static final int DOWN = 0;
-    public static final int LEFT = 1;
-    public static final int RIGHT = 2;
-    public static final int UP = 3;
+    // Las direcciones coinciden con las filas del spritesheet (ver Direction).
+    public static final int DOWN = Direction.DOWN;
+    public static final int LEFT = Direction.LEFT;
+    public static final int RIGHT = Direction.RIGHT;
+    public static final int UP = Direction.UP;
 
     private final Texture sheet;
     private final Animation<TextureRegion>[] walkByDirection;

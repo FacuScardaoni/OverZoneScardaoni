@@ -1,8 +1,15 @@
-package com.OverZone.Scardaoni.world;
+/*
+ * ARCHIVO COMPARTIDO entre los dos repositorios:
+ *   - OverZoneScardaoni         (cliente)
+ *   - OverZoneScardaoni-Server  (servidor)
+ * Tiene que ser IDÉNTICO en los dos. Si lo cambiás en uno, copialo al otro.
+ * Si cambia el formato de algún mensaje, subí también Protocol.VERSION, así
+ * un cliente y un servidor de versiones distintas se avisan en lugar de fallar.
+ */
+package com.OverZone.Scardaoni.shared;
 
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
-import com.OverZone.Scardaoni.entities.Obstacle;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,10 +45,28 @@ public class Arena {
         obstacles.add(new Obstacle(582, 246, bw, bh));   // flanco derecho del centro
     }
 
+    /** Busca un lugar libre cerca del centro del mapa. */
     public Vector2 findFreeSpawn(float entitySize) {
-        float centerX = WIDTH / 2f;
-        float centerY = HEIGHT / 2f;
+        return findFreeSpawnNear(WIDTH / 2f, HEIGHT / 2f, entitySize);
+    }
 
+    /**
+     * Busca el lugar libre de obstáculos más cercano al punto indicado,
+     * recorriendo círculos cada vez más grandes alrededor de él.
+     */
+    /**
+     * Lugares donde pueden aparecer los Power-Ups (centros, sin obstáculos).
+     * Están en zonas disputadas, entre las bases, para que haya que arriesgarse.
+     */
+    public static final float[][] POWERUP_SPAWNS = {
+        {WIDTH / 2f, HEIGHT / 2f},   // centro
+        {224f, HEIGHT / 2f},         // pasillo izquierdo
+        {WIDTH - 224f, HEIGHT / 2f}, // pasillo derecho
+        {340f, 120f},                // abajo a la izquierda del centro
+        {WIDTH - 340f, HEIGHT - 120f} // arriba a la derecha del centro
+    };
+
+    public Vector2 findFreeSpawnNear(float centerX, float centerY, float entitySize) {
         if (isFreeFor(centerX, centerY, entitySize)) {
             return new Vector2(centerX, centerY);
         }
