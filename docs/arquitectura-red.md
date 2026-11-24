@@ -64,9 +64,9 @@ Todos son texto con los campos separados por `;`. Los números con decimales sie
 | `WELCOME;id` | Servidor → cliente | Aceptado; se le asigna un número de jugador. |
 | `REJECT;FULL` / `REJECT;UNKNOWN` / `REJECT;VERSION;v` | Servidor → cliente | Partida llena / el servidor no conoce a este cliente / versión de protocolo distinta. |
 | `INPUT;seq;moveX;moveY;aimX;aimY;fire;contadorHabilidad` | Cliente → servidor | Entradas del jugador, una por frame. |
-| `PING;listo;personaje;marcaDeTiempo` | Cliente → servidor | Latido cada 250 ms; además informa si el jugador marcó "listo" y qué personaje eligió (el servidor solo acepta el cambio en la sala de espera). |
+| `PING;listo;personaje;modo;marcaDeTiempo` | Cliente → servidor | Latido cada 250 ms; además informa si el jugador marcó "listo", qué personaje eligió y qué modo pide. El servidor solo acepta el personaje en la sala de espera, y el modo solo si lo pide el anfitrión y se puede jugar con los jugadores que hay. |
 | `PONG;marcaDeTiempo` | Servidor → cliente | Devuelve la marca: el cliente calcula el retardo de ida y vuelta. |
-| `STATE;seq;fase;tiempo;...` | Servidor → clientes | Estado completo de la partida, 30 veces por segundo. |
+| `STATE;seq;fase;tiempo;azul;rojo;ganador;motivo;modo;anfitrion;JUGADORES;PROYECTILES;ZONAS` | Servidor → clientes | Estado completo de la partida, 30 veces por segundo. Incluye el modo, quién es el anfitrión y los Campos de Regeneración de Iris. |
 | `DISCONNECT` | Cliente → servidor | Me voy (se envía dos veces). |
 | `SHUTDOWN` | Servidor → clientes | El servidor se cierra (se envía dos veces). |
 
@@ -77,11 +77,11 @@ sequenceDiagram
     participant C as Cliente
     participant S as Servidor
     C->>S: OVERZONE_DISCOVER (broadcast a toda la subred)
-    S-->>C: OVERZONE_SERVER;OverZone;1;4;1
-    C->>S: CONNECT;Facu;1
+    S-->>C: OVERZONE_SERVER;OverZone;1;4;3
+    C->>S: CONNECT;Facu;3
     S-->>C: WELCOME;2
     loop Cada 250 ms
-        C->>S: PING;0;1;marca
+        C->>S: PING;0;1;0;marca
         S-->>C: PONG;marca
     end
     loop 30 veces por segundo
@@ -97,15 +97,27 @@ sequenceDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> LOBBY
-    LOBBY --> COUNTDOWN : 2 o más jugadores, todos listos
+    LOBBY --> COUNTDOWN : todos listos (Todos contra todos: 2 o más; Equipos: 4)
     COUNTDOWN --> LOBBY : alguien deja de estar listo o se va
     COUNTDOWN --> PLAYING : 3 segundos
     PLAYING --> RESULTS : tiempo agotado
-    PLAYING --> RESULTS : un equipo se quedó sin jugadores
+    PLAYING --> RESULTS : no quedan rivales (un equipo vacío o 1 solo jugador)
     RESULTS --> LOBBY : 8 segundos (nadie listo)
 ```
 
 La etapa viaja dentro de cada `STATE`. Los clientes no cambian de pantalla por su cuenta: `Main.followServer` compara la etapa recibida con la pantalla actual y cambia cuando no coinciden (sala → juego → resultados → sala).
+
+### Modos de juego y anfitrión
+
+* El **anfitrión** es el primer jugador de la lista del servidor (el que lleva más tiempo conectado). Si se va, el siguiente pasa a ser anfitrión. Su id viaja en cada `STATE`, así todos los clientes saben quién es.
+* El cliente manda en cada `PING` el modo que pide. El servidor **solo reacciona cuando el pedido cambia**, y lo aplica si: viene del anfitrión, la partida no empezó y el modo se puede jugar (Equipos 2v2: exactamente 4 jugadores). Si no, lo ignora y el estado sigue mostrando el modo actual.
+* Si estando en Equipos alguien se va de la sala, el servidor vuelve a Todos contra todos.
+* El campo `team` de cada jugador significa cosas distintas según el modo: en Equipos es el equipo (0 azul, 1 rojo); en Todos contra todos, el color propio de cada jugador (0 a 3). El campo `ganador` es el equipo o el id del jugador ganador (-1 si hay empate).
+
+### Habilidades sincronizadas por el servidor
+
+* **Campo de Regeneración (Iris):** el servidor crea la zona (`RegenZone`), le descuenta el tiempo y en cada paso cura a los aliados que están adentro. Viaja en la lista `ZONAS` del estado; el cliente solo la dibuja.
+* **Camuflaje Óptico (Phantom):** el servidor marca a Phantom con la habilidad activa (y la corta si dispara). Cada cliente decide cómo dibujarlo según si es rival o aliado, pero todos parten del mismo dato, así que ven el mismo efecto al mismo tiempo.
 
 ## 5. Retardos y pérdida de paquetes (requisito 3)
 

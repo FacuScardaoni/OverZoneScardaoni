@@ -4,6 +4,49 @@ Todos los cambios importantes realizados en **OverZone** serán documentados en 
 
 El formato utilizado está basado en el estándar **Keep a Changelog**, organizando las modificaciones desde las más recientes hasta las más antiguas.
 
+## [0.7.0] - 2026-11-22
+
+Hasta 4 jugadores, dos modos de juego y los personajes del alcance deseable. **Cambia el protocolo (versión 3): hay que actualizar también el servidor.**
+
+### Agregado
+
+* **Modos de juego:** Todos contra todos (2 a 4 jugadores, gana quien más elimina) y Equipos 2v2 (solo con exactamente 4 jugadores). `GameMode` en el paquete compartido.
+* **Anfitrión de la sala:** el primer jugador conectado elige el modo (botones o tecla `M`). El servidor valida el pedido: rechaza Equipos si no hay 4 jugadores y vuelve a Todos contra todos si alguien se va.
+* **Iris** (Aegis Protocol, Soporte): pulsos de energía de poco daño y el **Campo de Regeneración**, una zona que cura a los aliados durante 5 s.
+* **Phantom** (Shadow Syndicate, Asesino): muy rápido, disparos veloces de mucho daño y corto alcance, y el **Camuflaje Óptico**, que lo vuelve casi invisible para los rivales durante 4 s.
+* Alcance máximo de los disparos según el personaje.
+* Sprites de Iris y Phantom, proyectiles propios, textura del Campo de Regeneración, botones de súper con cruz y ojo tachado, y sonidos `heal.wav` y `camo.wav` (`tools/generar_sonidos_v07.py`).
+* Colores propios de cada jugador en Todos contra todos (azul, rojo, verde y violeta).
+
+### Cambiado
+
+* Sala de espera rediseñada: lista de hasta 4 jugadores con el anfitrión marcado, panel de modo de juego y cuatro tarjetas de personaje (teclas `1` a `4`).
+* HUD: en Todos contra todos muestra tus eliminaciones y las del jugador que va primero.
+* Resultados: en Todos contra todos, ranking por eliminaciones y "¡GANASTE!" o "GANÓ (nombre)".
+* El autoapuntado ignora a los aliados y a los Phantom camuflados.
+* Volt y Brutus ajustados a la propuesta: recarga de 10 s y 15 s, Volt con armadura azul, Brutus con detalles rojos, y Brutus camina más lento con el escudo activo.
+* El estado (`STATE`) agrega el modo, el anfitrión y los campos de regeneración; el `PING` agrega el modo pedido.
+
+## [0.6.0] - 2026-11-22
+
+Rediseño de la interfaz: HUD con botones de ataque y súper, y menús con estilo futurista. Solo cambia el cliente; el servidor y el protocolo no se modifican.
+
+### Agregado
+
+* **Botón de ataque** (rojo, con mira de francotirador) y **botón de súper** (amarillo) en el HUD, que funcionan como joysticks: se arrastran para apuntar y al soltarlos se dispara o se usa la habilidad. Si solo se tocan, el disparo apunta al enemigo más cercano.
+* Línea de mira en el mapa mientras se apunta con el botón rojo, flecha del Impulso Over y cono del Escudo Cinético mientras se apunta con el amarillo.
+* El botón de súper muestra un anillo de carga y brilla cuando la habilidad está lista.
+* `UiKit`: fuentes y texturas de la interfaz compartidas por todas las pantallas. Fuentes Russo One y Chakra Petch (licencia OFL), generadas con FreeType; ahora se pueden usar tildes y eñes en los textos.
+* `MenuBackground`: fondo animado de los menús, con grilla en perspectiva, chispas, líneas de velocidad y explosiones de energía.
+* `UiDraw`: paneles con esquinas biseladas y brillos de neón.
+* Logo de OverZone e imágenes de los botones, generados con `tools/generar_ui.py`.
+* Menú principal con logo, los dos personajes y navegación con flechas y ENTER.
+
+### Cambiado
+
+* HUD rediseñado: panel del personaje con barra de vida segmentada y recarga de la habilidad, reloj con puntaje de cada equipo y aviso de "ELIMINADO". El HUD se adapta a la forma de la ventana y queda pegado a sus bordes.
+* Todas las pantallas de menú usan el nuevo estilo: botones de neón con animación al pasar el mouse, paneles translúcidos y títulos con efecto de color.
+
 ## [0.5.0] - 2026-11-19
 
 Segundo personaje jugable y nuevos recursos gráficos.

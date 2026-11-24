@@ -29,7 +29,7 @@ El jugador asumirá el papel de uno de los combatientes enviados por estas organ
 La versión mínima del proyecto contempla:
 
 * Partidas de 2 a 4 jugadores.
-* Combate por equipos basado en eliminaciones.
+* Dos modos de juego: **Todos contra todos** y **Equipos 2v2**, basados en eliminaciones.
 * Arquitectura Cliente-Servidor.
 * Servidor autoritativo.
 * Comunicación mediante UDP.
@@ -40,7 +40,7 @@ La versión mínima del proyecto contempla:
 * Sistema de colisiones.
 * Obstáculos estáticos.
 * Sistema de disparos mediante proyectiles.
-* Dos personajes jugables con habilidades diferentes.
+* Cuatro personajes jugables con habilidades diferentes (Volt y Brutus del alcance mínimo, Iris y Phantom del alcance deseable).
 * Sistema de vida y daño.
 * Eliminación y reaparición de jugadores.
 * Puntaje por equipo.
@@ -48,7 +48,18 @@ La versión mínima del proyecto contempla:
 * HUD.
 * Pantalla final de resultados.
 
-El equipo que consiga la mayor cantidad de eliminaciones al finalizar el temporizador será declarado ganador.
+Al finalizar el temporizador gana quien consiga más eliminaciones: el jugador, en Todos contra todos, o el equipo, en Equipos 2v2.
+
+### Modos de juego
+
+| | Todos contra todos | Equipos 2v2 |
+| --- | --- | --- |
+| Jugadores | 2 a 4 | exactamente 4 |
+| Quién gana | el jugador con más eliminaciones | el equipo con más eliminaciones |
+| Colores | cada jugador tiene el suyo (azul, rojo, verde, violeta) | equipo Azul y equipo Rojo |
+| Aparición | en las esquinas; al reaparecer, en la más alejada de los rivales | en la base de cada equipo |
+
+El modo lo elige el **anfitrión** de la sala (el primer jugador que se conectó, marcado con `*`). Si no hay 4 jugadores en la sala, el servidor no permite elegir Equipos; y si alguien se va de la sala estando en Equipos, el modo vuelve a Todos contra todos.
 
 ## Personajes
 
@@ -74,19 +85,45 @@ Combatiente pesado especializado en resistencia y daño. Posee una gran cantidad
 
 Activa un escudo frontal capaz de absorber parte del daño recibido durante algunos segundos.
 
+### Iris
+
+**Facción:** Aegis Protocol
+**Rol:** Soporte
+
+Especialista en apoyo. Dispara pequeños pulsos de energía de daño reducido y mantiene a su equipo en combate.
+
+**Habilidad especial — Campo de Regeneración**
+
+Crea una zona circular donde los aliados recuperan vida durante algunos segundos. El servidor crea la zona, calcula quién está adentro y aplica la curación; los clientes solo la dibujan. En Todos contra todos, el campo cura únicamente a Iris.
+
+### Phantom
+
+**Facción:** Shadow Syndicate
+**Rol:** Asesino
+
+Combatiente de emboscada: muy rápido y con disparos veloces de mucho daño, pero de corto alcance y poca vida.
+
+**Habilidad especial — Camuflaje Óptico**
+
+Se vuelve casi invisible durante unos segundos. El servidor marca a Phantom como camuflado en el estado y todos los clientes muestran el mismo efecto: los rivales lo ven casi transparente y sin nombre, y su equipo lo ve translúcido. Disparar corta el camuflaje.
+
 ### Comparación
 
-| | Volt | Brutus |
-| --- | --- | --- |
-| Rol | Asalto | Tanque |
-| Vida | 100 | 180 |
-| Velocidad | 140 | 100 |
-| Daño por disparo | 25 | 40 |
-| Tiempo entre disparos | 0,22 s | 0,45 s |
-| Habilidad | Impulso Over: dash de 0,18 s a más del triple de velocidad | Escudo Cinético: durante 3 s absorbe el 70 % del daño que llega de frente |
-| Recarga de la habilidad | 3 s | 8 s |
+| | Volt | Brutus | Iris | Phantom |
+| --- | --- | --- | --- | --- |
+| Facción | CyberCore | Titan Force | Aegis Protocol | Shadow Syndicate |
+| Rol | Asalto | Tanque | Soporte | Asesino |
+| Vida | 100 | 180 | 110 | 90 |
+| Velocidad | 140 | 100 | 125 | 170 |
+| Daño por disparo | 25 | 40 | 15 | 38 |
+| Tiempo entre disparos | 0,22 s | 0,50 s | 0,28 s | 0,40 s |
+| Alcance | medio (330) | medio (330) | medio (300) | corto (170) |
+| Habilidad | Impulso Over: dash de 0,18 s a más del triple de velocidad | Escudo Cinético: durante 4 s absorbe el 70 % del daño que llega de frente (camina al 75 % de velocidad) | Campo de Regeneración: zona de 5 s que cura 14 de vida por segundo | Camuflaje Óptico: 4 s casi invisible, se corta al disparar |
+| Recarga de la habilidad | 10 s | 15 s | 20 s | 18 s |
 
-Cada jugador elige su personaje en la sala de espera (teclas `1` y `2` o con el mouse). Las estadísticas están definidas en `CharacterType`, dentro del paquete compartido `shared`.
+Las recargas y los colores siguen la propuesta: Volt con armadura azul (CyberCore), Brutus gris con rojo (Titan Force), Iris blanca con verde y cian (Aegis Protocol) y Phantom negro con rojo y casco cerrado (Shadow Syndicate).
+
+Cada jugador elige su personaje en la sala de espera (teclas `1` a `4` o con el mouse). Las estadísticas están definidas en `CharacterType`, dentro del paquete compartido `shared`.
 
 ## Arquitectura de red
 
@@ -103,7 +140,7 @@ Los clientes solo hacen dos cosas:
 
 La propuesta inicial contemplaba TCP para los eventos críticos y UDP para las actualizaciones frecuentes. En la implementación se utiliza únicamente UDP, siguiendo lo trabajado en la materia, y la confiabilidad de los eventos críticos se resuelve con el diseño de los mensajes:
 
-* **El servidor envía el estado completo, no los cambios.** 30 veces por segundo manda una "foto" de toda la partida (fase, tiempo, puntaje, jugadores y proyectiles). Si un paquete se pierde, el siguiente lo reemplaza por completo, por lo que una eliminación, un cambio de puntaje o el fin de la partida nunca se pierden.
+* **El servidor envía el estado completo, no los cambios.** 30 veces por segundo manda una "foto" de toda la partida (fase, modo, tiempo, puntaje, jugadores, proyectiles y campos de regeneración). Si un paquete se pierde, el siguiente lo reemplaza por completo, por lo que una eliminación, un cambio de puntaje o el fin de la partida nunca se pierden.
 * **Números de secuencia.** Cada estado y cada entrada llevan un número; los paquetes que llegan tarde o desordenados se descartan.
 * **La habilidad se envía como contador.** El cliente manda cuántas veces pidió la habilidad en total, no un "se apretó ahora": si un paquete se pierde, el siguiente igual informa el pedido.
 * **Reintentos y latido.** La búsqueda y la conexión se reintentan; durante la partida, el cliente avisa cada 250 ms que sigue conectado. Si alguno de los dos lados deja de recibir datos durante 3 segundos, se considera la conexión perdida.
@@ -217,18 +254,20 @@ Los dos programas requieren **Java 21**.
 
 * Servidor autoritativo independiente, con bucle de juego de paso fijo (60 actualizaciones por segundo) y envío del estado a los clientes 30 veces por segundo.
 * Descubrimiento del servidor por broadcast en la red local, sin IP escrita en el código.
-* Partidas de 2 a 4 jugadores en dos equipos (Azul y Rojo), con eliminaciones, reaparición, puntaje por equipo y temporizador de 2 minutos.
+* Partidas de 2 a 4 jugadores en dos modos: Todos contra todos y Equipos 2v2 (solo con 4 jugadores), elegidos por el anfitrión de la sala. Eliminaciones, reaparición, puntaje y temporizador de 2 minutos.
 * Sala de espera con marca de "listo", cuenta regresiva y pantalla de resultados. Al terminar, todos vuelven a la sala y pueden jugar otra partida sin reiniciar los programas.
 * Interpolación del movimiento en el cliente, descarte de paquetes viejos y medición del retardo (ping) visible en el HUD.
 * Manejo de errores de red: puerto ocupado, servidor no encontrado, partida llena, desconexión de un cliente (avisada o por tiempo de espera), cierre o caída del servidor, y cierre ordenado de sockets e hilos.
 * Simulación de retardo y pérdida de paquetes desde la consola del servidor.
 
-* Dos personajes jugables, Volt y Brutus, con estadísticas y habilidades distintas, elegibles en la sala de espera.
-* Sprites animados de los dos personajes (caminata en cuatro direcciones), proyectiles, Escudo Cinético y mapa con texturas de estilo ciencia ficción. Los jugadores se distinguen por el anillo del color de su equipo.
+* Cuatro personajes jugables, Volt, Brutus, Iris y Phantom, con estadísticas, alcance y habilidades distintas, elegibles en la sala de espera.
+* Sprites animados de los cuatro personajes (caminata en cuatro direcciones), proyectiles, Escudo Cinético, Campo de Regeneración y mapa con texturas de estilo ciencia ficción. Los jugadores se distinguen por el anillo del color de su equipo (o el suyo propio en Todos contra todos).
 
-Los recursos gráficos se generan con el script `tools/generar_sprites.py` (y el sonido del escudo con `tools/generar_sonido_escudo.py`), así que se pueden modificar cambiando colores o medidas y volviendo a ejecutarlo.
+Los recursos gráficos se generan con los scripts `tools/generar_sprites.py` (personajes y mapa) y `tools/generar_ui.py` (logo y botones del HUD), y los sonidos de las habilidades con `tools/generar_sonido_escudo.py` y `tools/generar_sonidos_v07.py`, así que se pueden modificar cambiando colores o medidas y volviendo a ejecutarlo.
 
-**Controles:** `W A S D` moverse · Mouse apuntar · Click izquierdo disparar · Click derecho o `Espacio` habilidad (Impulso Over o Escudo Cinético) · `1`/`2` elegir personaje en la sala · `ESC` menú de pausa · `M` silenciar · `+`/`-` volumen. En red, la pausa no detiene la partida: el personaje se queda quieto mientras el menú está abierto.
+**Controles:** `W A S D` moverse · Mouse apuntar · Click izquierdo disparar · Click derecho o `Espacio` habilidad · `1` a `4` elegir personaje en la sala · `M` cambiar el modo en la sala (solo el anfitrión).
+
+También se puede jugar con los **botones del HUD**, abajo a la derecha: el botón rojo (ataque) y el amarillo (súper) se arrastran para apuntar y al soltarlos disparan o activan la habilidad; si solo se tocan, el disparo apunta al enemigo más cercano · `ESC` menú de pausa · `M` silenciar · `+`/`-` volumen. En red, la pausa no detiene la partida: el personaje se queda quieto mientras el menú está abierto.
 
 **Video de demostración:** _(agregar aquí el enlace a YouTube/Google Drive con permisos de visualización para los docentes)._
 
@@ -245,12 +284,12 @@ Este repositorio tiene dos módulos: `core` (el juego) y `lwjgl3` (el lanzador p
 
 | Paquete | Contenido |
 | --- | --- |
-| `shared` | **Compartido con el servidor:** `Protocol`, `PlayerInput`, `WorldSnapshot`, `MatchPhase`, `Team`, `Direction`, `CharacterType`, `GameConstants`, `Arena`, `Obstacle`. |
+| `shared` | **Compartido con el servidor:** `Protocol`, `PlayerInput`, `WorldSnapshot`, `MatchPhase`, `GameMode`, `Team`, `Direction`, `CharacterType`, `GameConstants`, `Arena`, `Obstacle`. |
 | `network` | `ClientNetwork`: búsqueda del servidor, conexión y recepción del estado. |
 | `input` | `PlayerInputProcessor`: captura teclado y mouse. |
 | `graphics` | `DirectionalAnimation`: animación desde spritesheet. |
 | `audio` | `AudioManager`: música, efectos y volumen. |
-| `ui` | `Hud`: interfaz fija en pantalla. |
+| `ui` | `Hud` (interfaz fija en pantalla), `HudControls` (botones de ataque y súper), `UiKit` (fuentes e imágenes compartidas), `UiDraw` y `MenuBackground` (estilo visual de los menús). |
 | `screens` | `BaseMenuScreen` (base abstracta), `MenuScreen`, `ConnectScreen`, `LobbyScreen`, `GameScreen`, `PauseScreen`, `ControlsScreen`, `ResultsScreen`, `MessageScreen`. |
 
 El detalle de la red está en [`docs/arquitectura-red.md`](docs/arquitectura-red.md). El documento [`docs/diagrama-clases.md`](docs/diagrama-clases.md) describe el prototipo local de la etapa anterior.
@@ -279,15 +318,17 @@ El detalle de la red está en [`docs/arquitectura-red.md`](docs/arquitectura-red
 * [x] HUD.
 * [x] Pantalla de resultados.
 * [x] Segundo personaje (Brutus).
+* [x] Personajes del alcance deseable (Iris y Phantom).
+* [x] Modos Todos contra todos y Equipos 2v2.
 * [x] Sprites y animaciones de los personajes y texturas del mapa.
 * [ ] Modo de juego local.
-* [ ] Pruebas con múltiples clientes.
+* [x] Pruebas con múltiples clientes (4 clientes simulados).
 * [ ] Pruebas en red LAN.
 * [ ] Optimización y corrección de errores.
 
 ## Alcance futuro
 
-Una vez completado el alcance mínimo, se podrán incorporar características adicionales como nuevos personajes, mapas, facciones, obstáculos destructibles, Power-Ups, modos de juego alternativos, ranking, estadísticas, música, efectos de sonido, animaciones más elaboradas y partidas a través de Internet.
+Una vez completado el alcance mínimo, se podrán incorporar características adicionales como nuevos mapas, obstáculos destructibles, Power-Ups, modos de juego alternativos, ranking, estadísticas, música, efectos de sonido, animaciones más elaboradas y partidas a través de Internet.
 
 Estas funcionalidades forman parte del **alcance deseable** y estarán supeditadas al correcto funcionamiento de la arquitectura de red principal.
 

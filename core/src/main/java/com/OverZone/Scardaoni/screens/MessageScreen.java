@@ -64,8 +64,7 @@ public class MessageScreen extends BaseMenuScreen {
 
     @Override
     protected void drawText(Vector3 mouse) {
-        titleFont.setColor(Color.ORANGE);
-        drawCentered(titleFont, title, WIDTH / 2f, 220);
+        drawTitle(title, WIDTH / 2f, 222, Color.ORANGE);
         font.setColor(Color.WHITE);
         float y = 175;
         for (String line : lines) {

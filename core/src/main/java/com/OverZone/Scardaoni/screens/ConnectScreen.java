@@ -100,8 +100,7 @@ public class ConnectScreen extends BaseMenuScreen {
     @Override
     protected void drawText(Vector3 mouse) {
         ClientNetwork net = game.getNetwork();
-        titleFont.setColor(Color.WHITE);
-        drawCentered(titleFont, "Conectando", WIDTH / 2f, 230);
+        drawTitle("Conectando", WIDTH / 2f, 232, Color.WHITE);
 
         String dots = ".".repeat(1 + (int) (elapsed * 3) % 3);
         font.setColor(Color.LIGHT_GRAY);

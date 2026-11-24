@@ -8,6 +8,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
 import com.OverZone.Scardaoni.Main;
+import com.OverZone.Scardaoni.ui.UiKit;
 import com.OverZone.Scardaoni.audio.AudioManager;
 import com.OverZone.Scardaoni.shared.MatchPhase;
 
@@ -44,7 +45,6 @@ public class PauseScreen extends BaseMenuScreen {
         super(game, 1.8f);
         this.gameScreen = gameScreen;
         this.audio = game.getAudioManager();
-        background.set(0.04f, 0.05f, 0.08f, 1f);
     }
 
     @Override
@@ -130,10 +130,11 @@ public class PauseScreen extends BaseMenuScreen {
         drawButton(disconnectButton, mouse, 0.45f, 0.30f, 0.30f);
         drawButton(muteButton, mouse, muted ? 0.45f : 0.25f, 0.25f, 0.30f);
 
-        shapes.setColor(0.18f, 0.18f, 0.22f, 1f);
+        drawPanel(52, SLIDER_Y - 14, 376, 34, UiKit.CYAN);
+        shapes.setColor(0.12f, 0.14f, 0.2f, 1f);
         shapes.rect(SLIDER_X, SLIDER_Y, SLIDER_WIDTH, SLIDER_HEIGHT);
         if (muted) shapes.setColor(0.35f, 0.35f, 0.38f, 1f);
-        else shapes.setColor(0.30f, 0.65f, 0.95f, 1f);
+        else shapes.setColor(UiKit.CYAN);
         shapes.rect(SLIDER_X, SLIDER_Y, SLIDER_WIDTH * shownVolume, SLIDER_HEIGHT);
 
         boolean sliderActive = draggingVolume || sliderHitBox.contains(mouse.x, mouse.y);
@@ -146,8 +147,7 @@ public class PauseScreen extends BaseMenuScreen {
         float volume = audio.getVolume();
         boolean muted = audio.isMuted();
 
-        titleFont.setColor(Color.WHITE);
-        drawCentered(titleFont, "PAUSA", WIDTH / 2f, 245);
+        drawTitle("Pausa", WIDTH / 2f, 250, Color.WHITE);
         font.setColor(Color.ORANGE);
         drawCentered(font, "La partida sigue en curso: tu personaje esta quieto", WIDTH / 2f, 210);
 

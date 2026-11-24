@@ -1,6 +1,7 @@
 package com.OverZone.Scardaoni.screens;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -10,8 +11,10 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
@@ -24,9 +27,13 @@ import com.OverZone.Scardaoni.input.PlayerInputProcessor;
 import com.OverZone.Scardaoni.network.ClientNetwork;
 import com.OverZone.Scardaoni.shared.WorldSnapshot;
 import com.OverZone.Scardaoni.ui.Hud;
+import com.OverZone.Scardaoni.ui.UiKit;
+import com.OverZone.Scardaoni.ui.HudControls;
 import com.OverZone.Scardaoni.shared.Arena;
 import com.OverZone.Scardaoni.shared.CharacterType;
+import com.OverZone.Scardaoni.shared.Direction;
 import com.OverZone.Scardaoni.shared.GameConstants;
+import com.OverZone.Scardaoni.shared.GameMode;
 import com.OverZone.Scardaoni.shared.Obstacle;
 
 import java.util.HashSet;
@@ -50,9 +57,11 @@ public class GameScreen implements Screen {
     /** Si un jugador se movió más que esto entre dos estados, reapareció: no se interpola. */
     private static final float TELEPORT_DISTANCE = 80f;
 
-    /** Colores de cada equipo (anillo bajo los pies y proyectiles). */
-    private static final Color BLUE_TEAM = new Color(0.40f, 0.65f, 1f, 1f);
-    private static final Color RED_TEAM = new Color(1f, 0.42f, 0.42f, 1f);
+    /** Segundos por cuadro de caminata de cada personaje (en el orden de CharacterType). */
+    private static final float[] WALK_FRAME_TIME = {0.10f, 0.16f, 0.12f, 0.09f};
+    /** Opacidad de Phantom camuflado: casi invisible para los rivales, translúcido para su equipo. */
+    private static final float CAMO_ALPHA_ENEMY = 0.10f;
+    private static final float CAMO_ALPHA_ALLY = 0.45f;
     /** Tono que toma Volt mientras usa el Impulso Over. */
     private static final Color DASH_TINT = new Color(0.55f, 1f, 1f, 0.85f);
 
@@ -70,15 +79,26 @@ public class GameScreen implements Screen {
     /** El mapa es fijo e igual en el servidor y en el cliente: se usa solo para dibujarlo. */
     private final Arena arena;
     private final BitmapFont labelFont;
+    /** Botones de ataque y súper del HUD (joysticks). */
+    private final HudControls hudControls;
+    /** Primero los botones del HUD; si el click no es sobre un botón, le llega al teclado/mouse normal. */
+    private final InputMultiplexer inputs;
+    /** Para dibujar la línea de mira en el mapa. */
+    private final ShapeRenderer worldShapes = new ShapeRenderer();
+    private float lastDelta = 0f;
+
+    /** Distancia del punto de mira que se envía cuando se apunta con los botones. */
+    private static final float AIM_DISTANCE = 150f;
+    /** Hasta qué distancia busca enemigos el autoapuntado. */
+    private static final float AUTO_AIM_RANGE = 280f;
     private final GlyphLayout layout = new GlyphLayout();
 
     // --- Recursos gráficos ---
-    private Texture voltSheet, brutusSheet;
-    /** Una animación por personaje, ordenadas como CharacterType (0 = Volt, 1 = Brutus). */
+    /** Una animación por personaje, ordenadas como CharacterType (Volt, Brutus, Iris, Phantom). */
     private DirectionalAnimation[] animations;
     private Texture[] projectileTextures;
     private Texture floorTexture, wallTexture, wallVerticalTexture, coverTexture;
-    private Texture coreDecal, spawnBlue, spawnRed, teamRing, shieldTexture;
+    private Texture coreDecal, spawnBlue, spawnRed, teamRing, shieldTexture, regenZoneTexture;
     private TextureRegion floorRegion, shieldRegion;
 
     private float animationTimer = 0f;
@@ -88,7 +108,7 @@ public class GameScreen implements Screen {
     private long lastProcessedSeq = -1;
     private Set<Integer> knownProjectiles = new HashSet<>();
     private float lastHealth = -1f;
-    private int lastScoreTotal = -1;
+    private int lastKillTotal = -1;
     private boolean wasUsingAbility = false;
 
     public GameScreen(Main game) {
@@ -98,26 +118,31 @@ public class GameScreen implements Screen {
         worldCamera = new OrthographicCamera();
         worldViewport = new ExtendViewport(480, 270, worldCamera);
         batch = new SpriteBatch();
-        hud = new Hud();
+        hud = new Hud(game.getUi());
         input = new PlayerInputProcessor();
         arena = new Arena();
-        labelFont = new BitmapFont();
-        labelFont.getData().setScale(0.6f);
+        labelFont = game.getUi().label;
+        hudControls = new HudControls(hud.getViewport());
+        inputs = new InputMultiplexer(hudControls, input);
+        worldShapes.setAutoShapeType(true);
 
         loadAssets();
     }
 
     private void loadAssets() {
-        voltSheet = new Texture(Gdx.files.internal("volt_walk.png"));
-        brutusSheet = new Texture(Gdx.files.internal("brutus_walk.png"));
-        animations = new DirectionalAnimation[] {
-            new DirectionalAnimation(voltSheet, 32, 32, 4, 0.10f),    // Volt camina más rápido
-            new DirectionalAnimation(brutusSheet, 32, 32, 4, 0.16f)   // Brutus, más pesado
-        };
-        projectileTextures = new Texture[] {
-            new Texture(Gdx.files.internal("projectile_volt.png")),
-            new Texture(Gdx.files.internal("projectile_brutus.png"))
-        };
+        // Cada personaje tiene su hoja de sprites "<nombre>_walk.png" y su
+        // proyectil "projectile_<nombre>.png" (por ejemplo, iris_walk.png).
+        CharacterType[] types = CharacterType.values();
+        animations = new DirectionalAnimation[types.length];
+        projectileTextures = new Texture[types.length];
+        for (CharacterType type : types) {
+            String name = type.name().toLowerCase();
+            Texture sheet = new Texture(Gdx.files.internal(name + "_walk.png"));
+            animations[type.id()] = new DirectionalAnimation(sheet, 32, 32, 4, WALK_FRAME_TIME[type.id()]);
+            projectileTextures[type.id()] = new Texture(Gdx.files.internal("projectile_" + name + ".png"));
+        }
+        regenZoneTexture = new Texture(Gdx.files.internal("regen_zone.png"));
+        regenZoneTexture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
         floorTexture = repeating("floor_tile.png");
         floorRegion = new TextureRegion(floorTexture, 0, 0, (int) Arena.WIDTH, (int) Arena.HEIGHT);
@@ -142,7 +167,7 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
-        Gdx.input.setInputProcessor(input);
+        Gdx.input.setInputProcessor(inputs);
         audio.playMusic();
     }
 
@@ -166,19 +191,21 @@ public class GameScreen implements Screen {
         if (input.isPauseJustPressed()) {
             input.resetTransient();
             input.releaseAllKeys();
+            hudControls.reset();
             game.setScreen(new PauseScreen(game, this));
             return;
         }
 
-        // 1. Enviar entradas al servidor (la posición del mouse, en coordenadas del mapa).
-        Vector3 mouse = worldViewport.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
-        net.sendInput(input.getMoveX(), input.getMoveY(), mouse.x, mouse.y,
-            input.isFirePressed(), input.isAbilityJustPressed());
-        input.resetTransient();
-
-        // 2. Tomar los dos últimos estados recibidos.
+        lastDelta = delta;
+        hudControls.update(delta);
         ClientNetwork.SnapshotPair pair = net.getSnapshots();
         if (pair == null) return;
+
+        // 1. Enviar entradas al servidor: movimiento, punto de mira, disparo y habilidad.
+        sendInputs(net, pair.current.findPlayer(net.getPlayerId()), pair.current);
+        input.resetTransient();
+
+        // 2. Interpolación entre los dos últimos estados recibidos.
         float alpha = interpolationAlpha(pair);
         int myId = net.getPlayerId();
 
@@ -190,6 +217,135 @@ public class GameScreen implements Screen {
             updateCamera(lerpX(pair, me, alpha), lerpY(pair, me, alpha));
         }
         draw(pair, alpha, me, net.getPingMs());
+    }
+
+    // ------------------------------------------------------------------
+    // Entradas: teclado, mouse y botones del HUD
+    // ------------------------------------------------------------------
+
+    /**
+     * Arma y envía la entrada de este frame. El punto de mira es la posición
+     * del mouse en el mapa, salvo que se esté usando un botón del HUD: en ese
+     * caso apunta en la dirección en que se arrastró el botón (o al enemigo
+     * más cercano si solo se tocó). Son solo pedidos: el servidor decide.
+     */
+    private void sendInputs(ClientNetwork net, WorldSnapshot.PlayerState me, WorldSnapshot snap) {
+        Vector3 mouse = worldViewport.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
+        float aimX = mouse.x, aimY = mouse.y;
+        boolean fire = input.isFirePressed();
+        boolean ability = input.isAbilityJustPressed();
+
+        if (me != null) {
+            if (hudControls.isAimingAttack()) {
+                Vector2 d = new Vector2(hudControls.getAttackDrag()).nor();
+                aimX = me.x + d.x * AIM_DISTANCE;
+                aimY = me.y + d.y * AIM_DISTANCE;
+            } else if (hudControls.isShooting()) {
+                fire = true;
+                Vector2 target = hudControls.isShotAuto() ? autoAimTarget(me, snap)
+                    : new Vector2(me.x + hudControls.getShotDir().x * AIM_DISTANCE,
+                                  me.y + hudControls.getShotDir().y * AIM_DISTANCE);
+                aimX = target.x;
+                aimY = target.y;
+            }
+            if (hudControls.isAimingSuper()) {
+                Vector2 d = new Vector2(hudControls.getSuperDrag()).nor();
+                aimX = me.x + d.x * AIM_DISTANCE;
+                aimY = me.y + d.y * AIM_DISTANCE;
+            }
+            if (hudControls.consumeSuper()) {
+                ability = true;
+                if (!hudControls.isSuperAuto()) {
+                    aimX = me.x + hudControls.getSuperDir().x * AIM_DISTANCE;
+                    aimY = me.y + hudControls.getSuperDir().y * AIM_DISTANCE;
+                } else {
+                    Vector2 target = autoAimTarget(me, snap);
+                    aimX = target.x;
+                    aimY = target.y;
+                }
+            }
+        }
+        net.sendInput(input.getMoveX(), input.getMoveY(), aimX, aimY, fire, ability);
+    }
+
+    /** Enemigo vivo más cercano dentro del alcance; si no hay, hacia donde mira el jugador. */
+    private Vector2 autoAimTarget(WorldSnapshot.PlayerState me, WorldSnapshot snap) {
+        WorldSnapshot.PlayerState best = null;
+        float bestDist = AUTO_AIM_RANGE;
+        for (WorldSnapshot.PlayerState p : snap.players) {
+            // Solo rivales vivos; a un Phantom camuflado no se lo puede "ver".
+            if (!p.alive || !snap.areEnemies(me, p) || isCamouflaged(p)) continue;
+            float d = Vector2.dst(me.x, me.y, p.x, p.y);
+            if (d < bestDist) {
+                bestDist = d;
+                best = p;
+            }
+        }
+        if (best != null) return new Vector2(best.x, best.y);
+        switch (me.facing) {
+            case Direction.LEFT: return new Vector2(me.x - AIM_DISTANCE, me.y);
+            case Direction.RIGHT: return new Vector2(me.x + AIM_DISTANCE, me.y);
+            case Direction.UP: return new Vector2(me.x, me.y + AIM_DISTANCE);
+            default: return new Vector2(me.x, me.y - AIM_DISTANCE);
+        }
+    }
+
+    /**
+     * Mientras se arrastra un botón del HUD, dibuja en el mapa hacia dónde se
+     * va a disparar (línea roja) o usar la habilidad (amarillo).
+     */
+    private void drawAimIndicator(WorldSnapshot.PlayerState me, ClientNetwork.SnapshotPair pair, float alpha) {
+        boolean attack = hudControls.isAimingAttack();
+        boolean ability = hudControls.isAimingSuper();
+        if (me == null || !me.alive || (!attack && !ability)) return;
+
+        float x = lerpX(pair, me, alpha), y = lerpY(pair, me, alpha);
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        worldShapes.setProjectionMatrix(worldCamera.combined);
+        worldShapes.begin(ShapeRenderer.ShapeType.Filled);
+        if (attack) {
+            Vector2 d = new Vector2(hudControls.getAttackDrag()).nor();
+            // Línea punteada de mira
+            for (float t = 14; t < 170; t += 12) {
+                float a = 0.85f * (1f - t / 190f);
+                worldShapes.setColor(1f, 0.3f, 0.3f, a);
+                worldShapes.rectLine(x + d.x * t, y + d.y * t, x + d.x * (t + 7), y + d.y * (t + 7), 2.4f);
+            }
+            worldShapes.setColor(1f, 0.35f, 0.35f, 0.9f);
+            worldShapes.circle(x + d.x * 176, y + d.y * 176, 3.5f, 16);
+        }
+        if (ability) {
+            Vector2 d = new Vector2(hudControls.getSuperDrag()).nor();
+            CharacterType type = CharacterType.fromId(me.character);
+            if (type == CharacterType.BRUTUS) {
+                // Cono del escudo: la zona de la que frena los disparos
+                float angle = d.angleDeg();
+                worldShapes.setColor(1f, 0.85f, 0.2f, 0.28f);
+                worldShapes.arc(x, y, 44, angle - 66, 132, 24);
+            } else if (type == CharacterType.IRIS) {
+                // Campo de Regeneración: se crea donde está parada Iris
+                worldShapes.setColor(0.35f, 1f, 0.55f, 0.22f);
+                worldShapes.circle(x, y, CharacterType.REGEN_RADIUS, 40);
+            } else if (type == CharacterType.PHANTOM) {
+                // Camuflaje: un aro que se cierra sobre Phantom
+                worldShapes.setColor(1f, 0.25f, 0.35f, 0.35f);
+                worldShapes.set(ShapeRenderer.ShapeType.Line);
+                worldShapes.circle(x, y, 20, 32);
+                worldShapes.set(ShapeRenderer.ShapeType.Filled);
+            } else {
+                // Flecha del impulso: aproximadamente la distancia que recorre
+                float len = type.speed * 3.2f * type.abilityDuration;
+                worldShapes.setColor(1f, 0.88f, 0.25f, 0.6f);
+                worldShapes.rectLine(x, y, x + d.x * len, y + d.y * len, 6f);
+                Vector2 side = new Vector2(-d.y, d.x);
+                float tx = x + d.x * (len + 10), ty = y + d.y * (len + 10);
+                worldShapes.triangle(tx, ty,
+                    x + d.x * len + side.x * 8, y + d.y * len + side.y * 8,
+                    x + d.x * len - side.x * 8, y + d.y * len - side.y * 8);
+            }
+        }
+        worldShapes.end();
     }
 
     // ------------------------------------------------------------------
@@ -248,15 +404,21 @@ public class GameScreen implements Screen {
             if (lastHealth >= 0 && me.health < lastHealth) audio.playHit();
             lastHealth = me.health;
             if (me.abilityActive && !wasUsingAbility) {
-                if (CharacterType.fromId(me.character) == CharacterType.BRUTUS) audio.playShield();
-                else audio.playDash();
+                switch (CharacterType.fromId(me.character)) {
+                    case BRUTUS: audio.playShield(); break;
+                    case IRIS: audio.playHeal(); break;
+                    case PHANTOM: audio.playCamo(); break;
+                    default: audio.playDash(); break;
+                }
             }
             wasUsingAbility = me.abilityActive;
         }
 
-        int scoreTotal = snap.scoreBlue + snap.scoreRed;
-        if (lastScoreTotal >= 0 && scoreTotal > lastScoreTotal) audio.playEnemyDown();
-        lastScoreTotal = scoreTotal;
+        // Suma de las eliminaciones de todos: sirve igual en los dos modos.
+        int killTotal = 0;
+        for (WorldSnapshot.PlayerState p : snap.players) killTotal += p.kills;
+        if (lastKillTotal >= 0 && killTotal > lastKillTotal) audio.playEnemyDown();
+        lastKillTotal = killTotal;
     }
 
     // ------------------------------------------------------------------
@@ -283,36 +445,42 @@ public class GameScreen implements Screen {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         WorldSnapshot snap = pair.current;
-        int myTeam = me == null ? Team.NONE : me.team;
+        GameMode mode = snap.getMode();
 
         worldViewport.apply();
         batch.setProjectionMatrix(worldCamera.combined);
         batch.begin();
 
-        drawMap();
+        drawMap(mode);
+        drawZones(snap, mode);
 
-        // Jugadores: anillo del color del equipo, sprite del personaje y, si
-        // Brutus tiene el escudo activo, el arco del escudo hacia donde apunta.
+        // Jugadores: anillo del color del equipo (o del jugador en Todos contra
+        // todos), sprite del personaje y efectos de la habilidad activa.
         for (WorldSnapshot.PlayerState p : snap.players) {
             if (!p.alive) continue;
             float x = lerpX(pair, p, alpha);
             float y = lerpY(pair, p, alpha);
             CharacterType type = CharacterType.fromId(p.character);
+            float opacity = opacityFor(p, me, snap);
+            boolean hiddenEnemy = opacity < CAMO_ALPHA_ALLY;
 
-            batch.setColor(p.team == Team.BLUE ? BLUE_TEAM : RED_TEAM);
-            batch.draw(teamRing, x - 16, y - 18, 32, 16);
-            batch.setColor(Color.WHITE);
+            if (!hiddenEnemy) {
+                Color ring = UiKit.playerColor(mode, p.team);
+                batch.setColor(ring.r, ring.g, ring.b, opacity);
+                batch.draw(teamRing, x - 16, y - 18, 32, 16);
+            }
 
             boolean visible = !p.invulnerable || ((int) (animationTimer * 12) % 2 == 0);
             if (visible) {
                 if (p.abilityActive && type == CharacterType.VOLT) batch.setColor(DASH_TINT);
+                else batch.setColor(1f, 1f, 1f, opacity);
                 TextureRegion frame = animations[type.id()].getFrame(p.facing, p.moving);
                 float size = GameConstants.PLAYER_DRAW_SIZE;
                 // El sprite se dibuja un poco más arriba que el centro, para
                 // que los pies queden sobre el anillo.
                 batch.draw(frame, x - size / 2f, y - size / 2f + 4, size, size);
-                batch.setColor(Color.WHITE);
             }
+            batch.setColor(Color.WHITE);
 
             if (p.abilityActive && type == CharacterType.BRUTUS) {
                 // El dibujo del escudo apunta a la derecha; se rota según el ángulo.
@@ -327,16 +495,16 @@ public class GameScreen implements Screen {
             float y = before == null ? p.y : MathUtils.lerp(before.y, p.y, alpha);
             CharacterType type = CharacterType.fromId(p.character);
             float size = type.projectileSize * 1.5f;   // el brillo es más grande que el área de choque
-            batch.setColor(p.team == Team.BLUE ? BLUE_TEAM : RED_TEAM);
+            batch.setColor(UiKit.playerColor(mode, p.team));
             batch.draw(projectileTextures[type.id()], x - size / 2f, y - size / 2f, size, size);
         }
         batch.setColor(Color.WHITE);
 
-        // Nombres sobre cada jugador.
+        // Nombres sobre cada jugador (un Phantom camuflado rival no muestra el suyo).
         for (WorldSnapshot.PlayerState p : snap.players) {
-            if (!p.alive) continue;
+            if (!p.alive || opacityFor(p, me, snap) < CAMO_ALPHA_ALLY) continue;
             boolean isMe = me != null && p.id == me.id;
-            labelFont.setColor(isMe ? Color.YELLOW : (p.team == Team.BLUE ? Color.SKY : Color.SALMON));
+            labelFont.setColor(isMe ? Color.YELLOW : UiKit.playerColor(mode, p.team));
             String label = isMe ? "Vos" : p.name;
             layout.setText(labelFont, label);
             labelFont.draw(batch, label, lerpX(pair, p, alpha) - layout.width / 2f,
@@ -346,16 +514,51 @@ public class GameScreen implements Screen {
         batch.end();
 
         hud.getViewport().apply();
-        hud.render(batch, me, snap, audio.isMuted(), audio.getVolume(), pingMs);
+        drawAimIndicator(me, pair, alpha);
+
+        hud.render(batch, me, snap, audio.isMuted(), audio.getVolume(), pingMs, hudControls, lastDelta);
+    }
+
+    private static boolean isCamouflaged(WorldSnapshot.PlayerState p) {
+        return p.abilityActive && CharacterType.fromId(p.character) == CharacterType.PHANTOM;
+    }
+
+    /**
+     * Qué tan visible se dibuja un jugador. El servidor solo informa que
+     * Phantom está camuflado; cada cliente decide cómo mostrarlo: casi
+     * invisible si es rival, translúcido si es uno mismo o un compañero.
+     */
+    private float opacityFor(WorldSnapshot.PlayerState p, WorldSnapshot.PlayerState me, WorldSnapshot snap) {
+        if (!isCamouflaged(p)) return 1f;
+        boolean friendly = me == null || p.id == me.id || !snap.areEnemies(me, p);
+        return friendly ? CAMO_ALPHA_ALLY : CAMO_ALPHA_ENEMY;
+    }
+
+    /** Campos de Regeneración de Iris: círculo verde que late y se apaga al terminar. */
+    private void drawZones(WorldSnapshot snap, GameMode mode) {
+        for (WorldSnapshot.ZoneState z : snap.zones) {
+            float fade = MathUtils.clamp(z.remaining / 0.6f, 0f, 1f);       // se apaga en el final
+            float pulse = 0.75f + 0.25f * MathUtils.sin(animationTimer * 5f);
+            Color c = mode == GameMode.TEAMS ? UiKit.playerColor(mode, z.team) : UiKit.GREEN;
+            // Mezcla del verde de curación con el color del equipo dueño
+            batch.setColor(0.6f * UiKit.GREEN.r + 0.4f * c.r, 0.6f * UiKit.GREEN.g + 0.4f * c.g,
+                0.6f * UiKit.GREEN.b + 0.4f * c.b, 0.85f * fade * pulse);
+            float size = z.radius * 2f;
+            batch.draw(regenZoneTexture, z.x - z.radius, z.y - z.radius, size, size);
+        }
+        batch.setColor(Color.WHITE);
     }
 
     /** Piso, marcas en el piso, paredes y bloques de cobertura. */
-    private void drawMap() {
+    private void drawMap(GameMode mode) {
         batch.draw(floorRegion, 0, 0, Arena.WIDTH, Arena.HEIGHT);
 
-        float zoneY = Arena.HEIGHT / 2f - SPAWN_ZONE_H / 2f;
-        batch.draw(spawnBlue, SPAWN_MARGIN_X - SPAWN_ZONE_W / 2f, zoneY);
-        batch.draw(spawnRed, Arena.WIDTH - SPAWN_MARGIN_X - SPAWN_ZONE_W / 2f, zoneY);
+        // Las zonas de aparición de cada equipo solo tienen sentido en Equipos.
+        if (mode == GameMode.TEAMS) {
+            float zoneY = Arena.HEIGHT / 2f - SPAWN_ZONE_H / 2f;
+            batch.draw(spawnBlue, SPAWN_MARGIN_X - SPAWN_ZONE_W / 2f, zoneY);
+            batch.draw(spawnRed, Arena.WIDTH - SPAWN_MARGIN_X - SPAWN_ZONE_W / 2f, zoneY);
+        }
         batch.draw(coreDecal, Arena.WIDTH / 2f - coreDecal.getWidth() / 2f, Arena.HEIGHT / 2f - coreDecal.getHeight() / 2f);
 
         for (Obstacle obstacle : arena.getObstacles()) {
@@ -383,9 +586,10 @@ public class GameScreen implements Screen {
 
     /** Lo llama PauseScreen al volver a la partida. */
     public void resumeGame() {
-        Gdx.input.setInputProcessor(input);
+        Gdx.input.setInputProcessor(inputs);
         input.releaseAllKeys();
         input.resetTransient();
+        hudControls.reset();
     }
 
     @Override public void pause() { }
@@ -400,7 +604,7 @@ public class GameScreen implements Screen {
 
         batch.dispose();
         hud.dispose();
-        labelFont.dispose();
+        worldShapes.dispose();
         for (DirectionalAnimation animation : animations) animation.dispose(); // libera las hojas de sprites
         for (Texture t : projectileTextures) t.dispose();
         floorTexture.dispose();
@@ -412,5 +616,6 @@ public class GameScreen implements Screen {
         spawnRed.dispose();
         teamRing.dispose();
         shieldTexture.dispose();
+        regenZoneTexture.dispose();
     }
 }

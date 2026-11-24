@@ -30,22 +30,48 @@ def rgba(hex_color, alpha=255):
 # Personajes
 # ----------------------------------------------------------------------
 
+# Colores de cada facción, según la propuesta:
+#   CyberCore (Volt):           azul, celeste y violeta
+#   Titan Force (Brutus):       gris metálico, rojo y negro
+#   Aegis Protocol (Iris):      blanco, verde y cian
+#   Shadow Syndicate (Phantom): negro, rojo oscuro y detalles luminosos
+
 VOLT = {
-    "armor": rgba("#e4ebf2"), "armor_shade": rgba("#9aa7b6"), "armor_light": rgba("#ffffff"),
-    "suit": rgba("#28323f"), "suit_light": rgba("#3b4756"),
-    "accent": rgba("#22e0ff"), "accent_dark": rgba("#0b8fb3"),
-    "visor": rgba("#3ff2ff"), "gun": rgba("#4a5563"), "gun_light": rgba("#7d8a99"),
+    "armor": rgba("#3f7fe0"), "armor_shade": rgba("#24519c"), "armor_light": rgba("#8cc0ff"),
+    "suit": rgba("#232a44"), "suit_light": rgba("#36406a"),
+    "accent": rgba("#3ff2ff"), "accent_dark": rgba("#8a5cff"),
+    "visor": rgba("#6ff6ff"), "gun": rgba("#4a5563"), "gun_light": rgba("#7d8a99"),
     "torso_w": 10, "torso_h": 8, "head_w": 8, "head_h": 7, "leg_w": 3, "leg_h": 5,
     "shoulder": 0, "arm_w": 2, "gun_w": 2, "gun_len": 7, "pack": False,
 }
 
 BRUTUS = {
-    "armor": rgba("#5b636e"), "armor_shade": rgba("#3a4049"), "armor_light": rgba("#7d8794"),
-    "suit": rgba("#2a2723"), "suit_light": rgba("#3d3933"),
-    "accent": rgba("#ff8a1f"), "accent_dark": rgba("#b85a06"),
-    "visor": rgba("#ffb347"), "gun": rgba("#3f464f"), "gun_light": rgba("#808a96"),
+    "armor": rgba("#6a737e"), "armor_shade": rgba("#3e444d"), "armor_light": rgba("#929ca8"),
+    "suit": rgba("#1d1c1f"), "suit_light": rgba("#302e33"),
+    "accent": rgba("#ff3b30"), "accent_dark": rgba("#a3150f"),
+    "visor": rgba("#ff6a4d"), "gun": rgba("#3f464f"), "gun_light": rgba("#808a96"),
     "torso_w": 16, "torso_h": 9, "head_w": 10, "head_h": 6, "leg_w": 4, "leg_h": 5,
     "shoulder": 4, "arm_w": 3, "gun_w": 4, "gun_len": 9, "pack": True,
+}
+
+IRIS = {
+    "armor": rgba("#eef3f1"), "armor_shade": rgba("#a9b8b3"), "armor_light": rgba("#ffffff"),
+    "suit": rgba("#2c3b38"), "suit_light": rgba("#3f5450"),
+    "accent": rgba("#3dff8f"), "accent_dark": rgba("#17a85a"),
+    "visor": rgba("#5ff7ff"), "gun": rgba("#c9d6d2"), "gun_light": rgba("#ffffff"),
+    "torso_w": 9, "torso_h": 8, "head_w": 8, "head_h": 7, "leg_w": 3, "leg_h": 5,
+    "shoulder": 0, "arm_w": 2, "gun_w": 2, "gun_len": 5, "pack": False,
+    "holo": True,              # dispositivos holográficos flotando a su lado
+}
+
+PHANTOM = {
+    "armor": rgba("#23242b"), "armor_shade": rgba("#121318"), "armor_light": rgba("#464955"),
+    "suit": rgba("#15161a"), "suit_light": rgba("#2a2b32"),
+    "accent": rgba("#ff2a3d"), "accent_dark": rgba("#8a0f1c"),
+    "visor": rgba("#ff3348"), "gun": rgba("#2c2e36"), "gun_light": rgba("#5b5f6b"),
+    "torso_w": 9, "torso_h": 8, "head_w": 8, "head_h": 7, "leg_w": 3, "leg_h": 6,
+    "shoulder": 0, "arm_w": 2, "gun_w": 2, "gun_len": 6, "pack": False,
+    "slit": True,              # casco cerrado: solo una ranura roja como visor
 }
 
 
@@ -139,11 +165,18 @@ def draw_front_back(d, s, frame, facing_down):
     shaded_box(d, hx, hy, hw, hh, s["armor"], s["armor_light"], s["armor_shade"])
     round_corners(d, hx, hy, hw, hh)
     if facing_down:
-        rect(d, hx + 1, hy + 3, hw - 2, 2, s["visor"])         # visor
-        rect(d, hx + 1, hy + 3, 2, 1, rgba("#ffffff"))
+        if s.get("slit"):
+            rect(d, hx + 1, hy + 3, hw - 2, 1, s["visor"])     # ranura del casco cerrado
+            rect(d, cx - 1, hy + 4, 2, 1, s["accent_dark"])
+        else:
+            rect(d, hx + 1, hy + 3, hw - 2, 2, s["visor"])     # visor
+            rect(d, hx + 1, hy + 3, 2, 1, rgba("#ffffff"))
     else:
         rect(d, hx + 1, hy + hh - 3, hw - 2, 1, s["armor_shade"])
         rect(d, cx - 1, hy + 1, 2, hh - 3, s["accent_dark"])   # cresta
+
+    if s.get("holo"):
+        draw_holo(d, s, hx, hy, hw, frame)
 
 
 def draw_side(d, s, frame, facing_right):
@@ -196,7 +229,25 @@ def draw_side(d, s, frame, facing_right):
     shaded_box(d, hx, hy, hw, hh, s["armor"], s["armor_light"], s["armor_shade"])
     round_corners(d, hx, hy, hw, hh)
     vx = hx + hw - 3 if facing_right else hx
-    rect(d, vx, hy + 3, 3, 2, s["visor"])
+    if s.get("slit"):
+        rect(d, vx, hy + 3, 3, 1, s["visor"])
+    else:
+        rect(d, vx, hy + 3, 3, 2, s["visor"])
+
+    if s.get("holo"):
+        draw_holo(d, s, hx, hy, hw, frame)
+
+
+def draw_holo(d, s, hx, hy, hw, frame):
+    """Dispositivos holográficos de Iris: un aro sobre la cabeza y un dron chico que flota."""
+    bob = (0, -1, 0, 1)[frame]
+    # Aro holográfico
+    rect(d, hx + 1, hy - 2, hw - 2, 1, s["accent"][:3] + (200,))
+    # Dron flotando arriba a la derecha
+    dx, dy = hx + hw + 2, hy + 1 + bob
+    rect(d, dx, dy, 3, 3, s["accent_dark"])
+    d.point((dx + 1, dy + 1), fill=s["visor"])
+    rect(d, dx - 1, dy + 1, 1, 1, s["accent"][:3] + (160,))
 
 
 def add_outline(img):
@@ -291,6 +342,57 @@ def shield_arc():
                     px[x, y] = (255, 236, 190, int(255 * fade))          # bordes brillantes
                 else:
                     px[x, y] = (255, 150, 40, int(150 * fade))           # interior traslúcido
+    return img
+
+
+def pulse_ball(size):
+    """Pulso de energía de Iris: anillo con centro brillante (se tiñe al dibujarlo)."""
+    img = glow_ball(size, size * 0.16)
+    d = ImageDraw.Draw(img)
+    r = size * 0.32
+    c = (size - 1) / 2
+    d.ellipse([c - r, c - r, c + r, c + r], outline=(255, 255, 255, 230), width=1)
+    return img
+
+
+def dart(size):
+    """Dardo de Phantom: un rombo fino y muy brillante."""
+    img = glow_ball(size, 0.8)
+    d = ImageDraw.Draw(img)
+    c = (size - 1) / 2
+    d.polygon([(c, 0), (c + size * 0.18, c), (c, size - 1), (c - size * 0.18, c)], fill=(255, 255, 255, 255))
+    d.polygon([(0, c), (c, c - size * 0.12), (size - 1, c), (c, c + size * 0.12)], fill=(255, 255, 255, 200))
+    return img
+
+
+def regen_zone():
+    """Campo de Regeneración de Iris (blanco: se tiñe de verde al dibujarlo)."""
+    size = 128
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    px = img.load()
+    c = (size - 1) / 2
+    R = size / 2 - 1
+    for y in range(size):
+        for x in range(size):
+            dist = math.hypot(x - c, y - c)
+            if dist > R:
+                continue
+            t = dist / R
+            a = 40 + 70 * t ** 3                       # más intenso hacia el borde
+            if dist >= R - 2.5:
+                a = 230                                 # borde
+            elif abs(dist - R * 0.62) < 0.8:
+                a = 110                                 # anillo interior
+            px[x, y] = (255, 255, 255, int(a))
+    d = ImageDraw.Draw(img)
+    # Cruces de curación repartidas en el círculo
+    for ang in range(0, 360, 60):
+        a = math.radians(ang + 30)
+        x, y = c + math.cos(a) * R * 0.8, c + math.sin(a) * R * 0.8
+        d.rectangle([x - 1, y - 4, x + 1, y + 4], fill=(255, 255, 255, 200))
+        d.rectangle([x - 4, y - 1, x + 4, y + 1], fill=(255, 255, 255, 200))
+    d.rectangle([c - 3, c - 10, c + 3, c + 10], fill=(255, 255, 255, 150))
+    d.rectangle([c - 10, c - 3, c + 10, c + 3], fill=(255, 255, 255, 150))
     return img
 
 
@@ -405,8 +507,13 @@ def main():
     out = {
         "volt_walk.png": character_sheet(VOLT),
         "brutus_walk.png": character_sheet(BRUTUS),
+        "iris_walk.png": character_sheet(IRIS),
+        "phantom_walk.png": character_sheet(PHANTOM),
         "projectile_volt.png": glow_ball(8, 1.8),
         "projectile_brutus.png": heavy_shell(12),
+        "projectile_iris.png": pulse_ball(9),
+        "projectile_phantom.png": dart(9),
+        "regen_zone.png": regen_zone(),
         "shield.png": shield_arc(),
         "team_ring.png": team_ring(),
         "floor_tile.png": floor_tile(),

@@ -7,11 +7,16 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
 import com.OverZone.Scardaoni.Main;
+import com.OverZone.Scardaoni.ui.UiKit;
 import com.OverZone.Scardaoni.shared.CharacterType;
+import com.OverZone.Scardaoni.shared.GameMode;
 import com.OverZone.Scardaoni.shared.MatchPhase;
 import com.OverZone.Scardaoni.shared.Team;
 import com.OverZone.Scardaoni.network.ClientNetwork;
 import com.OverZone.Scardaoni.shared.WorldSnapshot;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Resultados de la partida. Los datos vienen del servidor. Pasados unos
@@ -68,8 +73,7 @@ public class ResultsScreen extends BaseMenuScreen {
 
     @Override
     protected void drawShapes(Vector3 mouse) {
-        shapes.setColor(0.12f, 0.14f, 0.2f, 1f);
-        shapes.rect(60, 62, 360, 88);
+        drawPanel(60, 64, 360, 92, UiKit.CYAN);
         drawButton(leaveButton, mouse, 0.30f, 0.30f, 0.35f);
     }
 
@@ -80,50 +84,79 @@ public class ResultsScreen extends BaseMenuScreen {
         if (snap == null) return;
 
         WorldSnapshot.PlayerState me = snap.findPlayer(net.getPlayerId());
-        int myTeam = me == null ? Team.NONE : me.team;
+        boolean ffa = snap.getMode() == GameMode.FREE_FOR_ALL;
 
+        // En Equipos, "winner" es el equipo ganador; en Todos contra todos, el id del jugador.
         String title;
         Color color;
         if (snap.winner == Team.NONE) {
             title = "EMPATE";
             color = Color.LIGHT_GRAY;
-        } else if (snap.winner == myTeam) {
+        } else if (ffa) {
+            WorldSnapshot.PlayerState w = snap.findPlayer(snap.winner);
+            if (me != null && snap.winner == me.id) {
+                title = "¡GANASTE!";
+                color = Color.GOLD;
+            } else {
+                title = "GANÓ " + (w == null ? "?" : w.name.toUpperCase());
+                color = Color.SCARLET;
+            }
+        } else if (me != null && snap.winner == me.team) {
             title = "VICTORIA";
             color = Color.GOLD;
         } else {
             title = "DERROTA";
             color = Color.SCARLET;
         }
-        titleFont.setColor(color);
-        drawCentered(titleFont, title, WIDTH / 2f, 250);
+        layout.setText(hugeFont, title);
+        drawTitle(layout.width > WIDTH - 30 ? titleFont : hugeFont, title, WIDTH / 2f, 258, color);
 
         font.setColor(Color.LIGHT_GRAY);
-        drawCentered(font, snap.endReason.equals("PLAYERS")
-            ? "La partida termino porque un equipo se quedo sin jugadores"
-            : "Tiempo agotado", WIDTH / 2f, 212);
+        String reason = snap.endReason.equals("PLAYERS")
+            ? (ffa ? "No quedaron rivales" : "Un equipo se quedo sin jugadores")
+            : "Tiempo agotado";
+        drawCentered(font, snap.getMode().displayName + "  -  " + reason, WIDTH / 2f, 206);
 
-        font.setColor(Color.SKY);
-        drawCentered(font, "Azul " + snap.scoreBlue, WIDTH / 2f - 60, 188);
-        font.setColor(Color.WHITE);
-        drawCentered(font, "-", WIDTH / 2f, 188);
-        font.setColor(Color.SALMON);
-        drawCentered(font, snap.scoreRed + " Rojo", WIDTH / 2f + 60, 188);
+        if (!ffa) {
+            font.setColor(Color.SKY);
+            drawCentered(font, "Azul " + snap.scoreBlue, WIDTH / 2f - 60, 182);
+            font.setColor(Color.WHITE);
+            drawCentered(font, "-", WIDTH / 2f, 182);
+            font.setColor(Color.SALMON);
+            drawCentered(font, snap.scoreRed + " Rojo", WIDTH / 2f + 60, 182);
+        } else {
+            font.setColor(Color.WHITE);
+            drawCentered(font, "Ranking por eliminaciones", WIDTH / 2f, 182);
+        }
 
+        // Tabla: en Todos contra todos, ordenada por eliminaciones
+        List<WorldSnapshot.PlayerState> rows = new ArrayList<>(snap.players);
+        if (ffa) {
+            rows.sort((x, y) -> x.kills != y.kills ? Integer.compare(y.kills, x.kills)
+                : Integer.compare(x.deaths, y.deaths));
+        } else {
+            rows.sort((x, y) -> Integer.compare(x.team, y.team));
+        }
         font.setColor(Color.GRAY);
-        font.draw(batch, "Jugador", 70, 143);
-        font.draw(batch, "Personaje", 160, 143);
-        font.draw(batch, "Equipo", 235, 143);
-        font.draw(batch, "Elim.", 300, 143);
-        font.draw(batch, "Muertes", 350, 143);
-        float y = 125;
-        for (WorldSnapshot.PlayerState p : snap.players) {
+        font.draw(batch, "Jugador", 70, 145);
+        font.draw(batch, "Personaje", 160, 145);
+        font.draw(batch, ffa ? "Puesto" : "Equipo", 235, 145);
+        font.draw(batch, "Elim.", 300, 145);
+        font.draw(batch, "Muertes", 350, 145);
+        float y = 128;
+        int place = 1;
+        for (WorldSnapshot.PlayerState p : rows) {
             font.setColor(p.id == net.getPlayerId() ? Color.YELLOW : Color.WHITE);
-            font.draw(batch, p.name, 70, y);
+            drawFitted(font, p.name, 70, y, 86);
+            font.setColor(UiKit.characterColor(CharacterType.fromId(p.character)));
             font.draw(batch, CharacterType.fromId(p.character).displayName, 160, y);
-            font.draw(batch, Team.name(p.team), 235, y);
+            font.setColor(UiKit.playerColor(snap.getMode(), p.team));
+            font.draw(batch, ffa ? "#" + place : Team.name(p.team), 235, y);
+            font.setColor(Color.WHITE);
             font.draw(batch, String.valueOf(p.kills), 310, y);
             font.draw(batch, String.valueOf(p.deaths), 370, y);
-            y -= 16;
+            y -= 15;
+            place++;
         }
 
         font.setColor(Color.GRAY);

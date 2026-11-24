@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
 import com.OverZone.Scardaoni.Main;
+import com.OverZone.Scardaoni.ui.UiKit;
 import com.OverZone.Scardaoni.shared.MatchPhase;
 
 /**
@@ -22,12 +23,13 @@ public class ControlsScreen extends BaseMenuScreen {
     private static final String[][] CONTROLS = {
         {"Moverse",              "W  A  S  D"},
         {"Apuntar",              "Mouse"},
-        {"Disparar",             "Click izquierdo"},
-        {"Habilidad especial",   "Click derecho / Espacio"},
+        {"Disparar",             "Click izquierdo  /  botón rojo"},
+        {"Habilidad especial",   "Click derecho  /  Espacio  /  botón amarillo"},
         {"Pausa",                "ESC"},
         {"Silenciar sonido",     "M"},
         {"Subir / bajar volumen","+  /  -"},
-        {"Elegir personaje (sala)", "1 Volt  /  2 Brutus"}
+        {"Elegir personaje (sala)", "1 Volt  2 Brutus  3 Iris  4 Phantom"},
+        {"Cambiar modo (sala)",  "M  (solo el anfitrión)"}
     };
 
     public ControlsScreen(Main game, Screen previousScreen) {
@@ -76,24 +78,24 @@ public class ControlsScreen extends BaseMenuScreen {
 
     @Override
     protected void drawShapes(Vector3 mouse) {
-        shapes.setColor(0.12f, 0.14f, 0.2f, 1f);
-        shapes.rect(50, 52, 380, 178);
+        drawPanel(50, 52, 380, 178, UiKit.CYAN);
         drawButton(backButton, mouse, 0.25f, 0.5f, 0.85f);
     }
 
     @Override
     protected void drawText(Vector3 mouse) {
-        titleFont.setColor(Color.WHITE);
-        drawCentered(titleFont, "Controles", WIDTH / 2f, 250);
+        drawTitle("Controles", WIDTH / 2f, 256, Color.WHITE);
 
-        float y = 218;
+        float y = 216;
         for (String[] row : CONTROLS) {
-            font.setColor(Color.LIGHT_GRAY);
-            font.draw(batch, row[0], 70, y);
-            font.setColor(Color.WHITE);
-            font.draw(batch, row[1], 265, y);
-            y -= 21;
+            smallFont.setColor(UiKit.CYAN);
+            smallFont.draw(batch, row[0].toUpperCase(), 66, y);
+            smallFont.setColor(Color.WHITE);
+            smallFont.draw(batch, row[1], 200, y);
+            y -= 16;
         }
+        smallFont.setColor(Color.LIGHT_GRAY);
+        drawCentered(smallFont, "Botones del HUD: arrastrá para apuntar y soltá para disparar.", WIDTH / 2f, 64);
         drawButtonLabel(backButton, "Volver");
     }
 }

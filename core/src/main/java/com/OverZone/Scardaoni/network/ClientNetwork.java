@@ -1,6 +1,7 @@
 package com.OverZone.Scardaoni.network;
 
 import com.OverZone.Scardaoni.shared.CharacterType;
+import com.OverZone.Scardaoni.shared.GameMode;
 import com.OverZone.Scardaoni.shared.PlayerInput;
 import com.OverZone.Scardaoni.shared.Protocol;
 import com.OverZone.Scardaoni.shared.WorldSnapshot;
@@ -65,6 +66,11 @@ public class ClientNetwork {
     private volatile int playerId = -1;
     private volatile boolean ready = false;
     private volatile CharacterType character = CharacterType.VOLT;
+    /**
+     * Modo que pide este cliente. El servidor solo le hace caso si este
+     * cliente es el anfitrión y el modo es válido con los jugadores que hay.
+     */
+    private volatile GameMode requestedMode = GameMode.FREE_FOR_ALL;
     private volatile SnapshotPair snapshots = null;
     private volatile float pingMs = -1f;
 
@@ -315,7 +321,7 @@ public class ClientNetwork {
     }
 
     private void sendHeartbeat() {
-        send(Protocol.join(Protocol.PING, ready ? 1 : 0, character.id(), System.nanoTime()));
+        send(Protocol.join(Protocol.PING, ready ? 1 : 0, character.id(), requestedMode.id(), System.nanoTime()));
     }
 
     /**
@@ -379,6 +385,15 @@ public class ClientNetwork {
     }
 
     public CharacterType getCharacter() { return character; }
+
+    /** Pide un modo de juego (solo tiene efecto si este cliente es el anfitrión). */
+    public void requestMode(GameMode mode) {
+        if (requestedMode == mode) return;
+        requestedMode = mode;
+        sendHeartbeat();
+    }
+
+    public GameMode getRequestedMode() { return requestedMode; }
     public Status getStatus() { return status; }
     public String getFailureMessage() { return failureMessage; }
     public String getServerName() { return serverName; }

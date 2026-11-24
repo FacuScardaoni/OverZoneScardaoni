@@ -13,6 +13,8 @@ public class AudioManager {
     private Sound enemyDownSound;
     private Sound dashSound;
     private Sound shieldSound;
+    private Sound healSound;
+    private Sound camoSound;
 
     private float volume = 0.6f;
     private boolean muted = false;
@@ -26,6 +28,8 @@ public class AudioManager {
         enemyDownSound = Gdx.audio.newSound(Gdx.files.internal("enemy_down.wav"));
         dashSound = Gdx.audio.newSound(Gdx.files.internal("dash.wav"));
         shieldSound = Gdx.audio.newSound(Gdx.files.internal("shield.wav"));
+        healSound = Gdx.audio.newSound(Gdx.files.internal("heal.wav"));
+        camoSound = Gdx.audio.newSound(Gdx.files.internal("camo.wav"));
 
         applyMusicVolume();
     }
@@ -45,6 +49,8 @@ public class AudioManager {
     public void playEnemyDown() { play(enemyDownSound); }
     public void playDash() { play(dashSound); }
     public void playShield() { play(shieldSound); }
+    public void playHeal() { play(healSound); }
+    public void playCamo() { play(camoSound); }
 
     private void play(Sound sound) {
         if (!muted) {
@@ -93,5 +99,7 @@ public class AudioManager {
         enemyDownSound.dispose();
         dashSound.dispose();
         shieldSound.dispose();
+        healSound.dispose();
+        camoSound.dispose();
     }
 }

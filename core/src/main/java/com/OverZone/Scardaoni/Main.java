@@ -3,6 +3,7 @@ package com.OverZone.Scardaoni;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Screen;
 import com.OverZone.Scardaoni.audio.AudioManager;
+import com.OverZone.Scardaoni.ui.UiKit;
 import com.OverZone.Scardaoni.shared.MatchPhase;
 import com.OverZone.Scardaoni.network.ClientNetwork;
 import com.OverZone.Scardaoni.shared.WorldSnapshot;
@@ -22,17 +23,24 @@ import com.OverZone.Scardaoni.screens.ResultsScreen;
 public class Main extends Game {
 
     private AudioManager audioManager;
+    private UiKit ui;
     private ClientNetwork network;
 
     @Override
     public void create() {
         audioManager = new AudioManager();
         audioManager.load();
+        ui = new UiKit();
         setScreen(new MenuScreen(this));
     }
 
     public AudioManager getAudioManager() {
         return audioManager;
+    }
+
+    /** Fuentes e imágenes de la interfaz, compartidas por todas las pantallas. */
+    public UiKit getUi() {
+        return ui;
     }
 
     // ------------------------------------------------------------------
@@ -114,5 +122,6 @@ public class Main extends Game {
         super.dispose();
         if (getScreen() != null) getScreen().dispose();
         audioManager.dispose();
+        ui.dispose();
     }
 }
