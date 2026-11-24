@@ -15,6 +15,7 @@ public class AudioManager {
     private Sound shieldSound;
     private Sound healSound;
     private Sound camoSound;
+    private Sound powerUpSound;
 
     private float volume = 0.6f;
     private boolean muted = false;
@@ -30,6 +31,7 @@ public class AudioManager {
         shieldSound = Gdx.audio.newSound(Gdx.files.internal("shield.wav"));
         healSound = Gdx.audio.newSound(Gdx.files.internal("heal.wav"));
         camoSound = Gdx.audio.newSound(Gdx.files.internal("camo.wav"));
+        powerUpSound = Gdx.audio.newSound(Gdx.files.internal("powerup.wav"));
 
         applyMusicVolume();
     }
@@ -51,6 +53,7 @@ public class AudioManager {
     public void playShield() { play(shieldSound); }
     public void playHeal() { play(healSound); }
     public void playCamo() { play(camoSound); }
+    public void playPowerUp() { play(powerUpSound); }
 
     private void play(Sound sound) {
         if (!muted) {
@@ -101,5 +104,6 @@ public class AudioManager {
         shieldSound.dispose();
         healSound.dispose();
         camoSound.dispose();
+        powerUpSound.dispose();
     }
 }

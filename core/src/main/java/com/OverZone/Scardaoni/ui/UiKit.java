@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.OverZone.Scardaoni.shared.CharacterType;
 import com.OverZone.Scardaoni.shared.GameMode;
+import com.OverZone.Scardaoni.shared.PowerUpType;
 import com.OverZone.Scardaoni.shared.Team;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
@@ -39,6 +40,10 @@ public class UiKit implements Disposable {
     public static final Color RED_TEAM = new Color(1f, 0.42f, 0.42f, 1f);
     public static final Color GREEN = new Color(0.35f, 1f, 0.55f, 1f);
     public static final Color CRIMSON = new Color(1f, 0.22f, 0.36f, 1f);
+    public static final Color POWERUP_HEALTH = new Color(0.35f, 1f, 0.55f, 1f);
+    public static final Color POWERUP_TURBO = new Color(1f, 0.84f, 0.24f, 1f);
+    public static final Color POWERUP_OVERLOAD = new Color(1f, 0.32f, 0.2f, 1f);
+    public static final Color POWERUP_ARMOR = new Color(0.32f, 0.82f, 1f, 1f);
 
     /**
      * Colores de los jugadores en Todos contra todos (el "team" de cada uno es
@@ -62,6 +67,9 @@ public class UiKit implements Disposable {
     public final Texture glow;
     public final Texture logo;
     public final Texture attackButton;
+    /** Ícono de cada Power-Up, en el orden de PowerUpType. */
+    private final Texture[] powerUpIcons;
+
     /** Botón amarillo de súper de cada personaje, en el orden de CharacterType. */
     private final Texture[] superButtons;
 
@@ -84,12 +92,31 @@ public class UiKit implements Disposable {
         glow = linear("ui/glow.png");
         logo = linear("ui/logo.png");
         attackButton = linear("ui/btn_attack.png");
+        PowerUpType[] puTypes = PowerUpType.values();
+        powerUpIcons = new Texture[puTypes.length];
+        for (PowerUpType t : puTypes) {
+            powerUpIcons[t.id()] = linear("powerup_" + t.name().toLowerCase() + ".png");
+        }
         superButtons = new Texture[] {
             linear("ui/btn_super_volt.png"),
             linear("ui/btn_super_brutus.png"),
             linear("ui/btn_super_iris.png"),
             linear("ui/btn_super_phantom.png")
         };
+    }
+
+    public Texture powerUpIcon(PowerUpType type) {
+        return powerUpIcons[type.id()];
+    }
+
+    /** Color de cada Power-Up (aura del jugador, textos y HUD). */
+    public static Color powerUpColor(PowerUpType type) {
+        switch (type) {
+            case HEALTH: return POWERUP_HEALTH;
+            case TURBO: return POWERUP_TURBO;
+            case OVERLOAD: return POWERUP_OVERLOAD;
+            default: return POWERUP_ARMOR;
+        }
     }
 
     public Texture superButton(CharacterType type) {
@@ -150,5 +177,6 @@ public class UiKit implements Disposable {
         logo.dispose();
         attackButton.dispose();
         for (Texture t : superButtons) t.dispose();
+        for (Texture t : powerUpIcons) t.dispose();
     }
 }

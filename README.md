@@ -42,6 +42,7 @@ La versión mínima del proyecto contempla:
 * Sistema de disparos mediante proyectiles.
 * Cuatro personajes jugables con habilidades diferentes (Volt y Brutus del alcance mínimo, Iris y Phantom del alcance deseable).
 * Sistema de vida y daño.
+* Power-Ups temporales que aparecen en el mapa (Botiquín, Turbo, Sobrecarga y Blindaje).
 * Eliminación y reaparición de jugadores.
 * Puntaje por equipo.
 * Temporizador de partida.
@@ -60,6 +61,21 @@ Al finalizar el temporizador gana quien consiga más eliminaciones: el jugador, 
 | Aparición | en las esquinas; al reaparecer, en la más alejada de los rivales | en la base de cada equipo |
 
 El modo lo elige el **anfitrión** de la sala (el primer jugador que se conectó, marcado con `*`). Si no hay 4 jugadores en la sala, el servidor no permite elegir Equipos; y si alguien se va de la sala estando en Equipos, el modo vuelve a Todos contra todos.
+
+### Power-Ups
+
+Durante la partida aparecen Power-Ups en cinco puntos fijos del mapa, marcados en el piso: el centro, los dos pasillos laterales y dos puntos cerca del centro. El primero aparece a los 5 segundos y después uno nuevo cada 8 segundos, con un máximo de 3 a la vez. Se agarran pasando por encima.
+
+| Power-Up | Efecto | Duración |
+| --- | --- | --- |
+| Botiquín (verde) | Recupera 50 de vida. Solo se agarra si te falta vida. | instantáneo |
+| Turbo (amarillo) | 35 % más de velocidad. | 6 s |
+| Sobrecarga (rojo) | 50 % más de daño por disparo. | 6 s |
+| Blindaje (celeste) | Recibís la mitad del daño. | 6 s |
+
+Si agarrás uno que ya tenés activo, se reinicia su tiempo. Al morir se pierden todos. El jugador con un Power-Up activo tiene un aura del color del efecto, y el HUD muestra los segundos que le quedan a cada uno.
+
+Todo lo decide el **servidor**: cuándo y dónde aparece cada uno (al azar entre los puntos libres), quién lo agarró y el efecto. El cliente solo los dibuja; el aviso "¡TURBO!" y el sonido los deduce viendo que un Power-Up desapareció con un jugador encima.
 
 ## Personajes
 
@@ -140,7 +156,7 @@ Los clientes solo hacen dos cosas:
 
 La propuesta inicial contemplaba TCP para los eventos críticos y UDP para las actualizaciones frecuentes. En la implementación se utiliza únicamente UDP, siguiendo lo trabajado en la materia, y la confiabilidad de los eventos críticos se resuelve con el diseño de los mensajes:
 
-* **El servidor envía el estado completo, no los cambios.** 30 veces por segundo manda una "foto" de toda la partida (fase, modo, tiempo, puntaje, jugadores, proyectiles y campos de regeneración). Si un paquete se pierde, el siguiente lo reemplaza por completo, por lo que una eliminación, un cambio de puntaje o el fin de la partida nunca se pierden.
+* **El servidor envía el estado completo, no los cambios.** 30 veces por segundo manda una "foto" de toda la partida (fase, modo, tiempo, puntaje, jugadores, proyectiles, campos de regeneración y Power-Ups). Si un paquete se pierde, el siguiente lo reemplaza por completo, por lo que una eliminación, un cambio de puntaje o el fin de la partida nunca se pierden.
 * **Números de secuencia.** Cada estado y cada entrada llevan un número; los paquetes que llegan tarde o desordenados se descartan.
 * **La habilidad se envía como contador.** El cliente manda cuántas veces pidió la habilidad en total, no un "se apretó ahora": si un paquete se pierde, el siguiente igual informa el pedido.
 * **Reintentos y latido.** La búsqueda y la conexión se reintentan; durante la partida, el cliente avisa cada 250 ms que sigue conectado. Si alguno de los dos lados deja de recibir datos durante 3 segundos, se considera la conexión perdida.
@@ -263,7 +279,7 @@ Los dos programas requieren **Java 21**.
 * Cuatro personajes jugables, Volt, Brutus, Iris y Phantom, con estadísticas, alcance y habilidades distintas, elegibles en la sala de espera.
 * Sprites animados de los cuatro personajes (caminata en cuatro direcciones), proyectiles, Escudo Cinético, Campo de Regeneración y mapa con texturas de estilo ciencia ficción. Los jugadores se distinguen por el anillo del color de su equipo (o el suyo propio en Todos contra todos).
 
-Los recursos gráficos se generan con los scripts `tools/generar_sprites.py` (personajes y mapa) y `tools/generar_ui.py` (logo y botones del HUD), y los sonidos de las habilidades con `tools/generar_sonido_escudo.py` y `tools/generar_sonidos_v07.py`, así que se pueden modificar cambiando colores o medidas y volviendo a ejecutarlo.
+Los recursos gráficos se generan con los scripts `tools/generar_sprites.py` (personajes y mapa) y `tools/generar_ui.py` (logo y botones del HUD), los Power-Ups con `tools/generar_powerups.py` y los sonidos de las habilidades con `tools/generar_sonido_escudo.py` y `tools/generar_sonidos_v07.py`, así que se pueden modificar cambiando colores o medidas y volviendo a ejecutarlo.
 
 **Controles:** `W A S D` moverse · Mouse apuntar · Click izquierdo disparar · Click derecho o `Espacio` habilidad · `1` a `4` elegir personaje en la sala · `M` cambiar el modo en la sala (solo el anfitrión).
 
@@ -284,7 +300,7 @@ Este repositorio tiene dos módulos: `core` (el juego) y `lwjgl3` (el lanzador p
 
 | Paquete | Contenido |
 | --- | --- |
-| `shared` | **Compartido con el servidor:** `Protocol`, `PlayerInput`, `WorldSnapshot`, `MatchPhase`, `GameMode`, `Team`, `Direction`, `CharacterType`, `GameConstants`, `Arena`, `Obstacle`. |
+| `shared` | **Compartido con el servidor:** `Protocol`, `PlayerInput`, `WorldSnapshot`, `MatchPhase`, `GameMode`, `PowerUpType`, `Team`, `Direction`, `CharacterType`, `GameConstants`, `Arena`, `Obstacle`. |
 | `network` | `ClientNetwork`: búsqueda del servidor, conexión y recepción del estado. |
 | `input` | `PlayerInputProcessor`: captura teclado y mouse. |
 | `graphics` | `DirectionalAnimation`: animación desde spritesheet. |
@@ -320,6 +336,7 @@ El detalle de la red está en [`docs/arquitectura-red.md`](docs/arquitectura-red
 * [x] Segundo personaje (Brutus).
 * [x] Personajes del alcance deseable (Iris y Phantom).
 * [x] Modos Todos contra todos y Equipos 2v2.
+* [x] Power-Ups temporales.
 * [x] Sprites y animaciones de los personajes y texturas del mapa.
 * [ ] Modo de juego local.
 * [x] Pruebas con múltiples clientes (4 clientes simulados).
@@ -328,7 +345,7 @@ El detalle de la red está en [`docs/arquitectura-red.md`](docs/arquitectura-red
 
 ## Alcance futuro
 
-Una vez completado el alcance mínimo, se podrán incorporar características adicionales como nuevos mapas, obstáculos destructibles, Power-Ups, modos de juego alternativos, ranking, estadísticas, música, efectos de sonido, animaciones más elaboradas y partidas a través de Internet.
+Una vez completado el alcance mínimo, se podrán incorporar características adicionales como nuevos mapas, obstáculos destructibles, más modos de juego, ranking, estadísticas, música, efectos de sonido, animaciones más elaboradas y partidas a través de Internet.
 
 Estas funcionalidades forman parte del **alcance deseable** y estarán supeditadas al correcto funcionamiento de la arquitectura de red principal.
 

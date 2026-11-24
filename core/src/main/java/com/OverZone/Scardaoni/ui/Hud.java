@@ -16,6 +16,7 @@ import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.OverZone.Scardaoni.shared.CharacterType;
 import com.OverZone.Scardaoni.shared.GameMode;
+import com.OverZone.Scardaoni.shared.PowerUpType;
 import com.OverZone.Scardaoni.shared.Team;
 import com.OverZone.Scardaoni.shared.WorldSnapshot;
 
@@ -80,16 +81,18 @@ public class Hud {
         Color accent = UiKit.characterColor(character);
 
         // Puntajes: en Equipos, azul contra rojo. En Todos contra todos, mis
-        // eliminaciones contra las del jugador que va primero.
+        // eliminaciones contra las de mi mejor rival (el que más tiene sin
+        // contarme a mí). Antes se comparaba contra "el que va primero", y si
+        // el primero era yo los dos recuadros mostraban mis propios puntos.
         boolean ffa = snap.getMode() == GameMode.FREE_FOR_ALL;
-        WorldSnapshot.PlayerState leader = ffa ? leader(snap) : null;
+        WorldSnapshot.PlayerState rival = ffa ? bestRival(snap, me) : null;
         int leftScore, rightScore;
         Color leftColor, rightColor;
         if (ffa) {
             leftScore = me == null ? 0 : me.kills;
-            rightScore = leader == null ? 0 : leader.kills;
+            rightScore = rival == null ? 0 : rival.kills;
             leftColor = me == null ? Color.GRAY : UiKit.playerColor(GameMode.FREE_FOR_ALL, me.team);
-            rightColor = leader == null ? Color.GRAY : UiKit.playerColor(GameMode.FREE_FOR_ALL, leader.team);
+            rightColor = rival == null ? Color.GRAY : UiKit.playerColor(GameMode.FREE_FOR_ALL, rival.team);
         } else {
             leftScore = snap.scoreBlue;
             rightScore = snap.scoreRed;
@@ -144,6 +147,9 @@ public class Hud {
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
 
+        // Power-Ups activos: un ícono con los segundos que le quedan, debajo del panel
+        if (me != null && me.alive) drawBoosts(batch, me, top, time);
+
         // Brillos de los botones
         boolean overAttack = controls.overAttack(m.x, m.y);
         UiDraw.glow(batch, ui.glow, ax, ay, 110,
@@ -193,9 +199,15 @@ public class Hud {
             small.setColor(me.team == Team.BLUE ? UiKit.BLUE_TEAM : UiKit.RED_TEAM);
             centered(batch, small, "TU EQUIPO: " + Team.name(me.team).toUpperCase(), midX, top - 40);
         } else if (me != null) {
-            small.setColor(Color.LIGHT_GRAY);
-            String leaderName = leader == null ? "-" : (leader.id == me.id ? "VOS" : leader.name.toUpperCase());
-            centered(batch, small, "VOS  |  LÍDER: " + leaderName, midX, top - 40);
+            // Puesto: 1 + cantidad de jugadores con más eliminaciones que yo
+            int place = 1;
+            for (WorldSnapshot.PlayerState p : snap.players) {
+                if (p.id != me.id && p.kills > me.kills) place++;
+            }
+            small.setColor(place == 1 ? UiKit.YELLOW : Color.LIGHT_GRAY);
+            String rivalName = rival == null ? "-" : rival.name.toUpperCase();
+            centered(batch, small, "VOS " + place + "°/" + snap.players.size() + "  |  RIVAL: " + rivalName,
+                midX, top - 40);
         }
 
         small.setColor(Color.GRAY);
@@ -218,11 +230,37 @@ public class Hud {
         batch.end();
     }
 
-    /** Jugador con más eliminaciones (null si nadie eliminó a nadie todavía). */
-    private static WorldSnapshot.PlayerState leader(WorldSnapshot snap) {
+    /** Fila de Power-Ups activos. Titilan en el último segundo y medio. */
+    private void drawBoosts(SpriteBatch batch, WorldSnapshot.PlayerState me, float top, float time) {
+        float x = 8;
+        float y = top - 74;
+        for (PowerUpType type : PowerUpType.values()) {
+            float left = me.boost(type);
+            if (!type.isTimed() || left <= 0f) continue;
+            if (left < 1.5f && MathUtils.sin(time * 18f) < 0f) {
+                x += 44;
+                continue;
+            }
+            Color c = UiKit.powerUpColor(type);
+            UiDraw.glow(batch, ui.glow, x + 8, y + 8, 30, c, 0.35f);
+            batch.setColor(Color.WHITE);
+            batch.draw(ui.powerUpIcon(type), x, y, 16, 16);
+            ui.small.setColor(c);
+            ui.small.draw(batch, String.format(java.util.Locale.ROOT, "%.1f", left), x + 18, y + 12);
+            x += 44;
+        }
+        batch.setColor(Color.WHITE);
+    }
+
+    /**
+     * Mi mejor rival: el otro jugador con más eliminaciones (si empatan, el
+     * que tenga menos muertes). Null si estoy solo.
+     */
+    private static WorldSnapshot.PlayerState bestRival(WorldSnapshot snap, WorldSnapshot.PlayerState me) {
         WorldSnapshot.PlayerState best = null;
         for (WorldSnapshot.PlayerState p : snap.players) {
-            if (p.kills > 0 && (best == null || p.kills > best.kills)) best = p;
+            if (me != null && p.id == me.id) continue;
+            if (best == null || p.kills > best.kills || (p.kills == best.kills && p.deaths < best.deaths)) best = p;
         }
         return best;
     }

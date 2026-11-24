@@ -7,6 +7,7 @@ import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
 import com.OverZone.Scardaoni.Main;
@@ -47,6 +48,23 @@ public class LobbyScreen extends BaseMenuScreen {
 
     /** Tarjetas de elección de personaje, en el mismo orden que CharacterType. */
     private final Rectangle[] characterCards = new Rectangle[CharacterType.values().length];
+
+    /** Cuánto se espera la confirmación del servidor antes de avisar que no se pudo. */
+    private static final float MODE_CONFIRM_TIMEOUT = 1.5f;
+    /** Cuánto queda en pantalla un aviso. */
+    private static final float NOTICE_DURATION = 3f;
+
+    /** Modo que pidió este cliente y todavía no confirmó el servidor (null si no hay). */
+    private GameMode pendingMode;
+    private float pendingTimer;
+    /** Último modo visto en el estado, para avisar cuando el anfitrión lo cambia. */
+    private GameMode lastSeenMode;
+
+    /** Aviso corto en la parte de abajo (por qué no se pudo cambiar el modo, etc.). */
+    private String notice;
+    private Color noticeColor = Color.WHITE;
+    private float noticeTimer;
+    private float blinkTimer;
 
     private final Texture[] sheets;
     /** Primer cuadro (mirando hacia abajo) de cada personaje, como retrato. */
@@ -94,7 +112,8 @@ public class LobbyScreen extends BaseMenuScreen {
                     case Input.Keys.M:
                         WorldSnapshot snap = latest();
                         if (snap != null) {
-                            chooseMode(snap.getMode() == GameMode.TEAMS ? GameMode.FREE_FOR_ALL : GameMode.TEAMS);
+                            GameMode shown = pendingMode != null ? pendingMode : snap.getMode();
+                            chooseMode(shown == GameMode.TEAMS ? GameMode.FREE_FOR_ALL : GameMode.TEAMS);
                         }
                         return true;
                     default:
@@ -159,11 +178,36 @@ public class LobbyScreen extends BaseMenuScreen {
         choose(CharacterType.fromId(Math.floorMod(net.getCharacter().id() + step, n)));
     }
 
-    /** Solo el anfitrión puede pedir modo; Equipos solo con 4 jugadores. */
+    /**
+     * Elegir un modo. Antes de mandar el pedido se revisa lo mismo que va a
+     * revisar el servidor, para avisarle al jugador en el momento por qué no
+     * se puede, en vez de que el botón "no haga nada".
+     */
     private void chooseMode(GameMode mode) {
         WorldSnapshot snap = latest();
-        if (!amHost(snap) || !mode.allows(snap.players.size())) return;
+        if (snap == null) return;
+        int count = snap.players.size();
+        if (!amHost(snap)) {
+            WorldSnapshot.PlayerState host = snap.findPlayer(snap.hostId);
+            showNotice("Solo el anfitrión" + (host == null ? "" : " (" + host.name + ")")
+                + " puede cambiar el modo", UiKit.ORANGE);
+            return;
+        }
+        if (!mode.allows(count)) {
+            showNotice(mode.displayName + " necesita exactamente " + mode.requiredPlayers
+                + " jugadores (hay " + count + ")", UiKit.ORANGE);
+            return;
+        }
+        if (mode == snap.getMode() && pendingMode == null) return; // ya está elegido
         game.getNetwork().requestMode(mode);
+        pendingMode = mode;
+        pendingTimer = MODE_CONFIRM_TIMEOUT;
+    }
+
+    private void showNotice(String text, Color color) {
+        notice = text;
+        noticeColor = color;
+        noticeTimer = NOTICE_DURATION;
     }
 
     private void leave() {
@@ -173,16 +217,30 @@ public class LobbyScreen extends BaseMenuScreen {
 
     @Override
     protected boolean update(float delta) {
+        blinkTimer += delta;
+        if (noticeTimer > 0) noticeTimer -= delta;
+
         WorldSnapshot snap = latest();
-        ClientNetwork net = game.getNetwork();
-        if (snap != null && net != null) {
-            // Si no soy anfitrión, o mi pedido ya no es válido (se fue alguien),
-            // me acomodo al modo que dice el servidor. Así, si paso a ser
-            // anfitrión, no cambio el modo sin querer.
-            GameMode requested = net.getRequestedMode();
-            if (!amHost(snap) || !requested.allows(snap.players.size())) {
-                net.requestMode(snap.getMode());
+        if (snap != null) {
+            GameMode current = snap.getMode();
+            // ¿El servidor confirmó el modo que pedí?
+            if (pendingMode != null) {
+                if (current == pendingMode) {
+                    pendingMode = null;
+                    showNotice("Modo: " + current.displayName, UiKit.GREEN);
+                } else {
+                    pendingTimer -= delta;
+                    if (pendingTimer <= 0) {
+                        pendingMode = null;
+                        showNotice("El servidor no aceptó el cambio. Probá de nuevo.", UiKit.ORANGE);
+                    }
+                }
+            } else if (lastSeenMode != null && current != lastSeenMode) {
+                // Lo cambió el anfitrión (o el servidor, porque alguien se fue).
+                showNotice(amHost(snap) ? "Modo: " + current.displayName
+                    : "Ahora se juega: " + current.displayName, UiKit.YELLOW);
             }
+            lastSeenMode = current;
         }
         return game.followServer(MatchPhase.LOBBY, MatchPhase.COUNTDOWN);
     }
@@ -220,10 +278,15 @@ public class LobbyScreen extends BaseMenuScreen {
             int count = snap.players.size();
             for (GameMode mode : GameMode.values()) {
                 Rectangle r = mode == GameMode.TEAMS ? teamsButton : ffaButton;
-                boolean on = snap.getMode() == mode;
+                boolean on = snap.getMode() == mode && pendingMode == null;
+                boolean waiting = pendingMode == mode;
                 boolean available = host && mode.allows(count);
                 Vector3 m = available ? mouse : new Vector3(-100, -100, 0);
-                if (on) drawButton(r, m, 1f, 0.86f, 0.2f, true);
+                if (waiting) {
+                    // Esperando la confirmación del servidor: el botón titila
+                    float k = 0.6f + 0.4f * Math.abs(MathUtils.sin(blinkTimer * 8f));
+                    drawButton(r, m, k, k * 0.86f, 0.2f, true);
+                } else if (on) drawButton(r, m, 1f, 0.86f, 0.2f, true);
                 else if (available) drawButton(r, m, 0.3f, 0.7f, 1f);
                 else drawButton(r, m, 0.35f, 0.35f, 0.4f);
             }
@@ -293,11 +356,15 @@ public class LobbyScreen extends BaseMenuScreen {
             String hint;
             if (!amHost(snap)) {
                 WorldSnapshot.PlayerState host = snap.findPlayer(snap.hostId);
-                hint = "Elige el anfitrion" + (host == null ? "" : ": " + host.name);
+                hint = "Elige el anfitrión" + (host == null ? "" : ": " + host.name);
+            } else if (pendingMode != null) {
+                smallFont.setColor(UiKit.YELLOW);
+                hint = "Cambiando a " + pendingMode.displayName + "...";
             } else if (count < GameMode.TEAMS.requiredPlayers) {
-                hint = "Equipos necesita 4 jugadores (" + count + "/4)";
+                hint = "SOS EL ANFITRIÓN - Equipos necesita 4 (" + count + "/4)";
             } else {
-                hint = "Vos elegis el modo (tecla M)";
+                smallFont.setColor(UiKit.YELLOW);
+                hint = "SOS EL ANFITRIÓN - elegí el modo (tecla M)";
             }
             drawFitted(smallFont, hint, 258, 143, 204);
         }
@@ -322,7 +389,13 @@ public class LobbyScreen extends BaseMenuScreen {
         }
 
         font.setColor(Color.WHITE);
-        if (snap != null) drawCentered(smallFont, statusText(snap), WIDTH / 2f, 46);
+        if (noticeTimer > 0 && notice != null) {
+            // Los avisos reemplazan por un momento al texto de estado
+            smallFont.setColor(noticeColor);
+            drawCentered(smallFont, notice, WIDTH / 2f, 46);
+        } else if (snap != null) {
+            drawCentered(smallFont, statusText(snap), WIDTH / 2f, 46);
+        }
 
         boolean ready = net != null && net.isReady();
         drawButtonLabel(readyButton, ready ? "No estoy listo" : "Listo (ENTER)");

@@ -4,6 +4,32 @@ Todos los cambios importantes realizados en **OverZone** serán documentados en 
 
 El formato utilizado está basado en el estándar **Keep a Changelog**, organizando las modificaciones desde las más recientes hasta las más antiguas.
 
+## [0.7.1] - 2026-11-24
+
+Power-Ups y arreglo de la elección del modo de juego. **Cambia el protocolo (versión 4): hay que actualizar también el servidor.**
+
+### Agregado
+
+* **Power-Ups temporales** (`PowerUpType`): Botiquín (+50 de vida), Turbo (+35 % de velocidad, 6 s), Sobrecarga (+50 % de daño, 6 s) y Blindaje (mitad de daño recibido, 6 s). Aparecen en cinco puntos del mapa (`Arena.POWERUP_SPAWNS`): el primero a los 5 s y después cada 8 s, hasta 3 a la vez.
+* Íconos de los Power-Ups y base en el piso que late (`tools/generar_powerups.py`), aura del color del efecto en los jugadores que tienen uno, texto "¡TURBO!" (o el que corresponda) sobre quien lo agarra y sonido `powerup.wav`.
+* HUD: debajo del panel del personaje se ven los Power-Ups activos con los segundos que les quedan; titilan cuando están por terminar.
+* El estado (`STATE`) agrega la lista de Power-Ups del mapa y, por jugador, el tiempo restante de cada efecto.
+
+### Corregido
+
+* **Contador de eliminaciones en Todos contra todos:** el recuadro derecho del HUD mostraba al jugador que iba primero, y si el primero eras vos, los dos recuadros mostraban tus propias eliminaciones (con 2 jugadores, cada eliminación parecía sumar en los dos lados). Ahora el izquierdo muestra las tuyas y el derecho las de tu **mejor rival**, y debajo se ve tu puesto (por ejemplo, "VOS 1°/2 | RIVAL: FACU").
+* Resultados de Todos contra todos: los jugadores empatados comparten el puesto en el ranking (antes salían como #1 y #2 aunque el título dijera "EMPATE").
+* El sonido de eliminación se calcula por jugador: antes, si alguien se iba justo cuando otro eliminaba, no sonaba.
+* Cambiar el modo a veces no reaccionaba. Antes el cliente mandaba en cada `PING` "el modo que quiero" y el servidor solo reaccionaba cuando ese valor cambiaba, así que un pedido rechazado podía dejar el botón trabado hasta elegir el otro modo y volver. Ahora cada pedido es **numerado** (como el contador de la habilidad): el servidor atiende cada número una sola vez, sobrevive a la pérdida de paquetes y cada clic es un pedido nuevo.
+* El pedido se envía en el momento del clic, sin esperar al próximo `PING`.
+
+### Cambiado
+
+* La sala de espera explica por qué no se puede cambiar el modo: "Solo el anfitrión (nombre) puede cambiar el modo" o "Equipos 2v2 necesita exactamente 4 jugadores (hay 3)".
+* El botón del modo pedido titila mientras espera la confirmación del servidor, y aparece "Modo: ..." cuando se aplica. Si no se aplica en 1,5 s, se avisa.
+* El anfitrión ve "SOS EL ANFITRIÓN" en el panel del modo, y los demás jugadores reciben un aviso cuando el modo cambia.
+* La tecla `M` alterna a partir del modo pedido, así apretarla dos veces seguidas funciona bien.
+
 ## [0.7.0] - 2026-11-22
 
 Hasta 4 jugadores, dos modos de juego y los personajes del alcance deseable. **Cambia el protocolo (versión 3): hay que actualizar también el servidor.**

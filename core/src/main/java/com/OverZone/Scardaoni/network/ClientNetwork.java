@@ -67,10 +67,14 @@ public class ClientNetwork {
     private volatile boolean ready = false;
     private volatile CharacterType character = CharacterType.VOLT;
     /**
-     * Modo que pide este cliente. El servidor solo le hace caso si este
-     * cliente es el anfitrión y el modo es válido con los jugadores que hay.
+     * Pedido de cambio de modo. Funciona igual que el contador de la
+     * habilidad: cada vez que el jugador elige un modo, el contador sube en 1
+     * y viaja en todos los PING junto con el modo elegido. El servidor atiende
+     * cada número una sola vez. Si un paquete se pierde, el siguiente PING
+     * repite el pedido; y si el jugador vuelve a apretar, es un pedido nuevo.
      */
-    private volatile GameMode requestedMode = GameMode.FREE_FOR_ALL;
+    private volatile int modeRequestCount = 0;
+    private volatile GameMode modeRequested = GameMode.FREE_FOR_ALL;
     private volatile SnapshotPair snapshots = null;
     private volatile float pingMs = -1f;
 
@@ -321,7 +325,8 @@ public class ClientNetwork {
     }
 
     private void sendHeartbeat() {
-        send(Protocol.join(Protocol.PING, ready ? 1 : 0, character.id(), requestedMode.id(), System.nanoTime()));
+        send(Protocol.join(Protocol.PING, ready ? 1 : 0, character.id(),
+            modeRequestCount, modeRequested.id(), System.nanoTime()));
     }
 
     /**
@@ -386,14 +391,16 @@ public class ClientNetwork {
 
     public CharacterType getCharacter() { return character; }
 
-    /** Pide un modo de juego (solo tiene efecto si este cliente es el anfitrión). */
-    public void requestMode(GameMode mode) {
-        if (requestedMode == mode) return;
-        requestedMode = mode;
+    /**
+     * Pide un modo de juego. Solo tiene efecto si este cliente es el
+     * anfitrión y el modo se puede jugar; si no, el servidor lo ignora.
+     * El pedido sale en el momento, sin esperar al próximo PING.
+     */
+    public synchronized void requestMode(GameMode mode) {
+        modeRequested = mode;
+        modeRequestCount++;
         sendHeartbeat();
     }
-
-    public GameMode getRequestedMode() { return requestedMode; }
     public Status getStatus() { return status; }
     public String getFailureMessage() { return failureMessage; }
     public String getServerName() { return serverName; }

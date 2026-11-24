@@ -144,19 +144,22 @@ public class ResultsScreen extends BaseMenuScreen {
         font.draw(batch, "Elim.", 300, 145);
         font.draw(batch, "Muertes", 350, 145);
         float y = 128;
-        int place = 1;
         for (WorldSnapshot.PlayerState p : rows) {
             font.setColor(p.id == net.getPlayerId() ? Color.YELLOW : Color.WHITE);
             drawFitted(font, p.name, 70, y, 86);
             font.setColor(UiKit.characterColor(CharacterType.fromId(p.character)));
             font.draw(batch, CharacterType.fromId(p.character).displayName, 160, y);
             font.setColor(UiKit.playerColor(snap.getMode(), p.team));
+            // Puesto: 1 + cuántos tienen más eliminaciones (los empatados comparten puesto)
+            int place = 1;
+            for (WorldSnapshot.PlayerState o : rows) {
+                if (o.kills > p.kills) place++;
+            }
             font.draw(batch, ffa ? "#" + place : Team.name(p.team), 235, y);
             font.setColor(Color.WHITE);
             font.draw(batch, String.valueOf(p.kills), 310, y);
             font.draw(batch, String.valueOf(p.deaths), 370, y);
             y -= 15;
-            place++;
         }
 
         font.setColor(Color.GRAY);

@@ -36,7 +36,14 @@ import com.OverZone.Scardaoni.shared.GameConstants;
 import com.OverZone.Scardaoni.shared.GameMode;
 import com.OverZone.Scardaoni.shared.Obstacle;
 
+import com.OverZone.Scardaoni.shared.PowerUpType;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -102,13 +109,35 @@ public class GameScreen implements Screen {
     private TextureRegion floorRegion, shieldRegion;
 
     private float animationTimer = 0f;
+
+    private Texture powerUpPad;
+    /** Power-Ups del estado anterior, para darse cuenta cuándo alguien agarra uno. */
+    private final Map<Integer, WorldSnapshot.PowerUpState> lastPowerUps = new HashMap<>();
+    /** Textos que suben y se desvanecen sobre quien agarró un Power-Up ("¡TURBO!"). */
+    private final List<FloatingText> floatingTexts = new ArrayList<>();
+
+    private static class FloatingText {
+        final String text;
+        final Color color;
+        final float x;
+        float y;
+        float life = 1.2f;
+
+        FloatingText(String text, Color color, float x, float y) {
+            this.text = text;
+            this.color = color;
+            this.x = x;
+            this.y = y;
+        }
+    }
     private boolean disposed = false;
 
     // --- Para deducir sonidos a partir de los estados ---
     private long lastProcessedSeq = -1;
     private Set<Integer> knownProjectiles = new HashSet<>();
     private float lastHealth = -1f;
-    private int lastKillTotal = -1;
+    /** Eliminaciones de cada jugador en el último estado (id -> eliminaciones). */
+    private Map<Integer, Integer> lastKills = new HashMap<>();
     private boolean wasUsingAbility = false;
 
     public GameScreen(Main game) {
@@ -141,6 +170,8 @@ public class GameScreen implements Screen {
             animations[type.id()] = new DirectionalAnimation(sheet, 32, 32, 4, WALK_FRAME_TIME[type.id()]);
             projectileTextures[type.id()] = new Texture(Gdx.files.internal("projectile_" + name + ".png"));
         }
+        powerUpPad = new Texture(Gdx.files.internal("powerup_pad.png"));
+        powerUpPad.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
         regenZoneTexture = new Texture(Gdx.files.internal("regen_zone.png"));
         regenZoneTexture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
@@ -210,6 +241,7 @@ public class GameScreen implements Screen {
         int myId = net.getPlayerId();
 
         playSoundEvents(pair.current, myId);
+        detectPowerUpPickups(pair.current, myId, delta);
 
         // 3. Cámara sobre mi jugador y dibujo.
         WorldSnapshot.PlayerState me = pair.current.findPlayer(myId);
@@ -414,11 +446,18 @@ public class GameScreen implements Screen {
             wasUsingAbility = me.abilityActive;
         }
 
-        // Suma de las eliminaciones de todos: sirve igual en los dos modos.
-        int killTotal = 0;
-        for (WorldSnapshot.PlayerState p : snap.players) killTotal += p.kills;
-        if (lastKillTotal >= 0 && killTotal > lastKillTotal) audio.playEnemyDown();
-        lastKillTotal = killTotal;
+        // Eliminaciones de cada jugador: si a alguno le subió, hubo una eliminación.
+        // (Antes se sumaban las de todos: si alguien se iba justo cuando otro
+        // eliminaba, la suma no cambiaba y el sonido no salía.)
+        boolean someoneScored = false;
+        Map<Integer, Integer> kills = new HashMap<>();
+        for (WorldSnapshot.PlayerState p : snap.players) {
+            kills.put(p.id, p.kills);
+            Integer before = lastKills.get(p.id);
+            if (before != null && p.kills > before) someoneScored = true;
+        }
+        if (someoneScored && !first) audio.playEnemyDown();
+        lastKills = kills;
     }
 
     // ------------------------------------------------------------------
@@ -453,6 +492,7 @@ public class GameScreen implements Screen {
 
         drawMap(mode);
         drawZones(snap, mode);
+        drawPowerUps(snap);
 
         // Jugadores: anillo del color del equipo (o del jugador en Todos contra
         // todos), sprite del personaje y efectos de la habilidad activa.
@@ -463,6 +503,14 @@ public class GameScreen implements Screen {
             CharacterType type = CharacterType.fromId(p.character);
             float opacity = opacityFor(p, me, snap);
             boolean hiddenEnemy = opacity < CAMO_ALPHA_ALLY;
+
+            if (!hiddenEnemy && p.hasAnyBoost()) {
+                // Aura del Power-Up activo (si tiene varios, va alternando el color)
+                Color aura = boostColor(p);
+                float pulse = 0.55f + 0.3f * MathUtils.sin(animationTimer * 7f);
+                batch.setColor(aura.r, aura.g, aura.b, pulse * opacity);
+                batch.draw(teamRing, x - 22, y - 22, 44, 22);
+            }
 
             if (!hiddenEnemy) {
                 Color ring = UiKit.playerColor(mode, p.team);
@@ -511,6 +559,15 @@ public class GameScreen implements Screen {
                 lerpY(pair, p, alpha) + GameConstants.PLAYER_DRAW_SIZE / 2f + 12);
         }
 
+        // Textos de Power-Ups agarrados
+        for (FloatingText t : floatingTexts) {
+            float a = MathUtils.clamp(t.life / 0.5f, 0f, 1f);
+            labelFont.setColor(t.color.r, t.color.g, t.color.b, a);
+            layout.setText(labelFont, t.text);
+            labelFont.draw(batch, t.text, t.x - layout.width / 2f, t.y);
+        }
+        labelFont.setColor(Color.WHITE);
+
         batch.end();
 
         hud.getViewport().apply();
@@ -534,6 +591,69 @@ public class GameScreen implements Screen {
         return friendly ? CAMO_ALPHA_ALLY : CAMO_ALPHA_ENEMY;
     }
 
+    /** Color del aura: el de un Power-Up activo; si hay varios, cambia cada medio segundo. */
+    private Color boostColor(WorldSnapshot.PlayerState p) {
+        List<PowerUpType> active = new ArrayList<>();
+        for (PowerUpType t : PowerUpType.values()) {
+            if (p.boost(t) > 0f) active.add(t);
+        }
+        return UiKit.powerUpColor(active.get((int) (animationTimer * 2f) % active.size()));
+    }
+
+    /** Power-Ups en el mapa: flotan arriba y abajo sobre una base que late. */
+    private void drawPowerUps(WorldSnapshot snap) {
+        for (WorldSnapshot.PowerUpState pu : snap.powerUps) {
+            Color c = UiKit.powerUpColor(pu.getType());
+            float pulse = 0.6f + 0.4f * MathUtils.sin(animationTimer * 5f + pu.id);
+            batch.setColor(c.r, c.g, c.b, 0.75f * pulse);
+            batch.draw(powerUpPad, pu.x - 20, pu.y - 20, 40, 40);
+            float bob = MathUtils.sin(animationTimer * 3f + pu.id) * 2.5f;
+            batch.setColor(Color.WHITE);
+            batch.draw(game.getUi().powerUpIcon(pu.getType()), pu.x - 12, pu.y - 12 + bob + 3, 24, 24);
+        }
+        batch.setColor(Color.WHITE);
+    }
+
+    /**
+     * El servidor no avisa "fulano agarró un Power-Up": el cliente lo deduce.
+     * Si un Power-Up desapareció durante la partida y había un jugador encima,
+     * ese jugador lo agarró: se muestra el nombre del efecto y, si fui yo,
+     * suena el efecto de sonido.
+     */
+    private void detectPowerUpPickups(WorldSnapshot snap, int myId, float delta) {
+        if (snap.phase == MatchPhase.PLAYING) {
+            for (WorldSnapshot.PowerUpState old : lastPowerUps.values()) {
+                if (snap.findPowerUp(old.id) != null) continue;
+                WorldSnapshot.PlayerState taker = null;
+                float best = (PowerUpType.PICKUP_RADIUS + 14f) * (PowerUpType.PICKUP_RADIUS + 14f);
+                for (WorldSnapshot.PlayerState p : snap.players) {
+                    if (!p.alive) continue;
+                    float dx = p.x - old.x, dy = p.y - old.y;
+                    float d2 = dx * dx + dy * dy;
+                    if (d2 <= best) {
+                        best = d2;
+                        taker = p;
+                    }
+                }
+                if (taker == null) continue;
+                PowerUpType type = old.getType();
+                if (taker.id == myId) audio.playPowerUp();
+                floatingTexts.add(new FloatingText("¡" + type.displayName.toUpperCase() + "!",
+                    UiKit.powerUpColor(type), taker.x, taker.y + GameConstants.PLAYER_DRAW_SIZE / 2f + 26));
+            }
+        }
+        lastPowerUps.clear();
+        for (WorldSnapshot.PowerUpState pu : snap.powerUps) lastPowerUps.put(pu.id, pu);
+
+        Iterator<FloatingText> it = floatingTexts.iterator();
+        while (it.hasNext()) {
+            FloatingText t = it.next();
+            t.life -= delta;
+            t.y += 22f * delta;
+            if (t.life <= 0f) it.remove();
+        }
+    }
+
     /** Campos de Regeneración de Iris: círculo verde que late y se apaga al terminar. */
     private void drawZones(WorldSnapshot snap, GameMode mode) {
         for (WorldSnapshot.ZoneState z : snap.zones) {
@@ -552,6 +672,13 @@ public class GameScreen implements Screen {
     /** Piso, marcas en el piso, paredes y bloques de cobertura. */
     private void drawMap(GameMode mode) {
         batch.draw(floorRegion, 0, 0, Arena.WIDTH, Arena.HEIGHT);
+
+        // Lugares donde aparecen los Power-Ups (marcados tenues aunque estén vacíos).
+        batch.setColor(1f, 1f, 1f, 0.18f);
+        for (float[] pos : Arena.POWERUP_SPAWNS) {
+            batch.draw(powerUpPad, pos[0] - 20, pos[1] - 20, 40, 40);
+        }
+        batch.setColor(Color.WHITE);
 
         // Las zonas de aparición de cada equipo solo tienen sentido en Equipos.
         if (mode == GameMode.TEAMS) {
@@ -617,5 +744,6 @@ public class GameScreen implements Screen {
         teamRing.dispose();
         shieldTexture.dispose();
         regenZoneTexture.dispose();
+        powerUpPad.dispose();
     }
 }

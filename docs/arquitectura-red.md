@@ -64,9 +64,9 @@ Todos son texto con los campos separados por `;`. Los números con decimales sie
 | `WELCOME;id` | Servidor → cliente | Aceptado; se le asigna un número de jugador. |
 | `REJECT;FULL` / `REJECT;UNKNOWN` / `REJECT;VERSION;v` | Servidor → cliente | Partida llena / el servidor no conoce a este cliente / versión de protocolo distinta. |
 | `INPUT;seq;moveX;moveY;aimX;aimY;fire;contadorHabilidad` | Cliente → servidor | Entradas del jugador, una por frame. |
-| `PING;listo;personaje;modo;marcaDeTiempo` | Cliente → servidor | Latido cada 250 ms; además informa si el jugador marcó "listo", qué personaje eligió y qué modo pide. El servidor solo acepta el personaje en la sala de espera, y el modo solo si lo pide el anfitrión y se puede jugar con los jugadores que hay. |
+| `PING;listo;personaje;nPedidoModo;modo;marcaDeTiempo` | Cliente → servidor | Latido cada 250 ms; además informa si el jugador marcó "listo", qué personaje eligió y su último pedido de modo (número y modo). El servidor solo acepta el personaje en la sala de espera, y el modo solo si lo pide el anfitrión y se puede jugar con los jugadores que hay. |
 | `PONG;marcaDeTiempo` | Servidor → cliente | Devuelve la marca: el cliente calcula el retardo de ida y vuelta. |
-| `STATE;seq;fase;tiempo;azul;rojo;ganador;motivo;modo;anfitrion;JUGADORES;PROYECTILES;ZONAS` | Servidor → clientes | Estado completo de la partida, 30 veces por segundo. Incluye el modo, quién es el anfitrión y los Campos de Regeneración de Iris. |
+| `STATE;seq;fase;tiempo;azul;rojo;ganador;motivo;modo;anfitrion;JUGADORES;PROYECTILES;ZONAS;POWERUPS` | Servidor → clientes | Estado completo de la partida, 30 veces por segundo. Incluye el modo, quién es el anfitrión, los Campos de Regeneración de Iris y los Power-Ups del mapa. Cada jugador lleva además los segundos que le quedan a cada Power-Up (ej.: `0:3.5:0:0`). |
 | `DISCONNECT` | Cliente → servidor | Me voy (se envía dos veces). |
 | `SHUTDOWN` | Servidor → clientes | El servidor se cierra (se envía dos veces). |
 
@@ -77,11 +77,11 @@ sequenceDiagram
     participant C as Cliente
     participant S as Servidor
     C->>S: OVERZONE_DISCOVER (broadcast a toda la subred)
-    S-->>C: OVERZONE_SERVER;OverZone;1;4;3
-    C->>S: CONNECT;Facu;3
+    S-->>C: OVERZONE_SERVER;OverZone;1;4;4
+    C->>S: CONNECT;Facu;4
     S-->>C: WELCOME;2
     loop Cada 250 ms
-        C->>S: PING;0;1;0;marca
+        C->>S: PING;0;1;0;0;marca
         S-->>C: PONG;marca
     end
     loop 30 veces por segundo
@@ -110,7 +110,9 @@ La etapa viaja dentro de cada `STATE`. Los clientes no cambian de pantalla por s
 ### Modos de juego y anfitrión
 
 * El **anfitrión** es el primer jugador de la lista del servidor (el que lleva más tiempo conectado). Si se va, el siguiente pasa a ser anfitrión. Su id viaja en cada `STATE`, así todos los clientes saben quién es.
-* El cliente manda en cada `PING` el modo que pide. El servidor **solo reacciona cuando el pedido cambia**, y lo aplica si: viene del anfitrión, la partida no empezó y el modo se puede jugar (Equipos 2v2: exactamente 4 jugadores). Si no, lo ignora y el estado sigue mostrando el modo actual.
+* **El pedido de modo es numerado**, igual que el contador de la habilidad. Cada vez que el anfitrión elige un modo, el cliente sube un contador y manda un `PING` en el momento. El número y el modo viajan repetidos en todos los `PING` siguientes, así que si un paquete se pierde, el próximo lleva el mismo pedido. El servidor atiende cada número **una sola vez**: las repeticiones no lo aplican dos veces, y si el jugador vuelve a apretar, es un pedido nuevo que se atiende aunque sea el mismo modo de antes.
+* El servidor aplica el pedido si viene del anfitrión, la partida no empezó y el modo se puede jugar (Equipos 2v2: exactamente 4 jugadores). Si lo rechaza, lo escribe en la consola con el motivo ("no es el anfitrion", "hacen falta 4 jugadores", "la partida ya empezo").
+* El cliente revisa lo mismo antes de mandar el pedido, para avisarle al jugador en pantalla por qué no se puede (por ejemplo, "Solo el anfitrión (Facu) puede cambiar el modo"). Mientras espera la confirmación, el botón titila; si en 1,5 s el estado no muestra el modo nuevo, avisa que no se aceptó.
 * Si estando en Equipos alguien se va de la sala, el servidor vuelve a Todos contra todos.
 * El campo `team` de cada jugador significa cosas distintas según el modo: en Equipos es el equipo (0 azul, 1 rojo); en Todos contra todos, el color propio de cada jugador (0 a 3). El campo `ganador` es el equipo o el id del jugador ganador (-1 si hay empate).
 
@@ -118,6 +120,12 @@ La etapa viaja dentro de cada `STATE`. Los clientes no cambian de pantalla por s
 
 * **Campo de Regeneración (Iris):** el servidor crea la zona (`RegenZone`), le descuenta el tiempo y en cada paso cura a los aliados que están adentro. Viaja en la lista `ZONAS` del estado; el cliente solo la dibuja.
 * **Camuflaje Óptico (Phantom):** el servidor marca a Phantom con la habilidad activa (y la corta si dispara). Cada cliente decide cómo dibujarlo según si es rival o aliado, pero todos parten del mismo dato, así que ven el mismo efecto al mismo tiempo.
+
+### Power-Ups
+
+* El servidor (`MatchSimulation.updatePowerUps`) decide cuándo aparece uno (a los 5 s y después cada 8 s, hasta 3), elige al azar el tipo y un punto libre de `Arena.POWERUP_SPAWNS`, detecta qué jugador lo toca y le aplica el efecto (`Player.applyPowerUp`).
+* Los efectos se aplican en el servidor: el Turbo en `Player.getCurrentSpeed`, el Blindaje en `Player.takeDamage` y la Sobrecarga al crear el proyectil, que guarda su propio daño.
+* El cliente recibe la lista de Power-Ups y los tiempos de cada jugador en el `STATE`. El aviso en pantalla y el sonido no necesitan un mensaje aparte: si un Power-Up desaparece durante la partida con un jugador encima, el cliente deduce que lo agarró. Como el estado es completo, aunque se pierda un paquete el siguiente muestra lo mismo.
 
 ## 5. Retardos y pérdida de paquetes (requisito 3)
 
