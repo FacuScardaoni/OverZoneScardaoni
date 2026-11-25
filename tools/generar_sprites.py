@@ -15,15 +15,15 @@ import random
 
 from PIL import Image, ImageDraw
 
-ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets")
-FRAME = 32
-DOWN, LEFT, RIGHT, UP = 0, 1, 2, 3
-OUTLINE = (14, 16, 22, 255)
+RECURSOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets")
+CUADRO = 32
+ABAJO, IZQUIERDA, DERECHA, ARRIBA = 0, 1, 2, 3
+CONTORNO = (14, 16, 22, 255)
 
 
-def rgba(hex_color, alpha=255):
-    hex_color = hex_color.lstrip("#")
-    return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4)) + (alpha,)
+def rgba(color_hex, alfa=255):
+    color_hex = color_hex.lstrip("#")
+    return tuple(int(color_hex[i:i + 2], 16) for i in (0, 2, 4)) + (alfa,)
 
 
 # ----------------------------------------------------------------------
@@ -37,41 +37,41 @@ def rgba(hex_color, alpha=255):
 #   Shadow Syndicate (Phantom): negro, rojo oscuro y detalles luminosos
 
 VOLT = {
-    "armor": rgba("#3f7fe0"), "armor_shade": rgba("#24519c"), "armor_light": rgba("#8cc0ff"),
-    "suit": rgba("#232a44"), "suit_light": rgba("#36406a"),
-    "accent": rgba("#3ff2ff"), "accent_dark": rgba("#8a5cff"),
-    "visor": rgba("#6ff6ff"), "gun": rgba("#4a5563"), "gun_light": rgba("#7d8a99"),
-    "torso_w": 10, "torso_h": 8, "head_w": 8, "head_h": 7, "leg_w": 3, "leg_h": 5,
-    "shoulder": 0, "arm_w": 2, "gun_w": 2, "gun_len": 7, "pack": False,
+    "armadura": rgba("#3f7fe0"), "armadura_sombra": rgba("#24519c"), "armadura_clara": rgba("#8cc0ff"),
+    "traje": rgba("#232a44"), "traje_claro": rgba("#36406a"),
+    "acento": rgba("#3ff2ff"), "acento_oscuro": rgba("#8a5cff"),
+    "visor": rgba("#6ff6ff"), "arma": rgba("#4a5563"), "arma_clara": rgba("#7d8a99"),
+    "ancho_torso": 10, "alto_torso": 8, "ancho_cabeza": 8, "alto_cabeza": 7, "ancho_pierna": 3, "alto_pierna": 5,
+    "hombro": 0, "ancho_brazo": 2, "ancho_arma": 2, "largo_arma": 7, "mochila": False,
 }
 
 BRUTUS = {
-    "armor": rgba("#6a737e"), "armor_shade": rgba("#3e444d"), "armor_light": rgba("#929ca8"),
-    "suit": rgba("#1d1c1f"), "suit_light": rgba("#302e33"),
-    "accent": rgba("#ff3b30"), "accent_dark": rgba("#a3150f"),
-    "visor": rgba("#ff6a4d"), "gun": rgba("#3f464f"), "gun_light": rgba("#808a96"),
-    "torso_w": 16, "torso_h": 9, "head_w": 10, "head_h": 6, "leg_w": 4, "leg_h": 5,
-    "shoulder": 4, "arm_w": 3, "gun_w": 4, "gun_len": 9, "pack": True,
+    "armadura": rgba("#6a737e"), "armadura_sombra": rgba("#3e444d"), "armadura_clara": rgba("#929ca8"),
+    "traje": rgba("#1d1c1f"), "traje_claro": rgba("#302e33"),
+    "acento": rgba("#ff3b30"), "acento_oscuro": rgba("#a3150f"),
+    "visor": rgba("#ff6a4d"), "arma": rgba("#3f464f"), "arma_clara": rgba("#808a96"),
+    "ancho_torso": 16, "alto_torso": 9, "ancho_cabeza": 10, "alto_cabeza": 6, "ancho_pierna": 4, "alto_pierna": 5,
+    "hombro": 4, "ancho_brazo": 3, "ancho_arma": 4, "largo_arma": 9, "mochila": True,
 }
 
 IRIS = {
-    "armor": rgba("#eef3f1"), "armor_shade": rgba("#a9b8b3"), "armor_light": rgba("#ffffff"),
-    "suit": rgba("#2c3b38"), "suit_light": rgba("#3f5450"),
-    "accent": rgba("#3dff8f"), "accent_dark": rgba("#17a85a"),
-    "visor": rgba("#5ff7ff"), "gun": rgba("#c9d6d2"), "gun_light": rgba("#ffffff"),
-    "torso_w": 9, "torso_h": 8, "head_w": 8, "head_h": 7, "leg_w": 3, "leg_h": 5,
-    "shoulder": 0, "arm_w": 2, "gun_w": 2, "gun_len": 5, "pack": False,
-    "holo": True,              # dispositivos holográficos flotando a su lado
+    "armadura": rgba("#eef3f1"), "armadura_sombra": rgba("#a9b8b3"), "armadura_clara": rgba("#ffffff"),
+    "traje": rgba("#2c3b38"), "traje_claro": rgba("#3f5450"),
+    "acento": rgba("#3dff8f"), "acento_oscuro": rgba("#17a85a"),
+    "visor": rgba("#5ff7ff"), "arma": rgba("#c9d6d2"), "arma_clara": rgba("#ffffff"),
+    "ancho_torso": 9, "alto_torso": 8, "ancho_cabeza": 8, "alto_cabeza": 7, "ancho_pierna": 3, "alto_pierna": 5,
+    "hombro": 0, "ancho_brazo": 2, "ancho_arma": 2, "largo_arma": 5, "mochila": False,
+    "holograma": True,              # dispositivos holográficos flotando a su lado
 }
 
 PHANTOM = {
-    "armor": rgba("#23242b"), "armor_shade": rgba("#121318"), "armor_light": rgba("#464955"),
-    "suit": rgba("#15161a"), "suit_light": rgba("#2a2b32"),
-    "accent": rgba("#ff2a3d"), "accent_dark": rgba("#8a0f1c"),
-    "visor": rgba("#ff3348"), "gun": rgba("#2c2e36"), "gun_light": rgba("#5b5f6b"),
-    "torso_w": 9, "torso_h": 8, "head_w": 8, "head_h": 7, "leg_w": 3, "leg_h": 6,
-    "shoulder": 0, "arm_w": 2, "gun_w": 2, "gun_len": 6, "pack": False,
-    "slit": True,              # casco cerrado: solo una ranura roja como visor
+    "armadura": rgba("#23242b"), "armadura_sombra": rgba("#121318"), "armadura_clara": rgba("#464955"),
+    "traje": rgba("#15161a"), "traje_claro": rgba("#2a2b32"),
+    "acento": rgba("#ff2a3d"), "acento_oscuro": rgba("#8a0f1c"),
+    "visor": rgba("#ff3348"), "arma": rgba("#2c2e36"), "arma_clara": rgba("#5b5f6b"),
+    "ancho_torso": 9, "alto_torso": 8, "ancho_cabeza": 8, "alto_cabeza": 7, "ancho_pierna": 3, "alto_pierna": 6,
+    "hombro": 0, "ancho_brazo": 2, "ancho_arma": 2, "largo_arma": 6, "mochila": False,
+    "ranura": True,              # casco cerrado: solo una ranura roja como visor
 }
 
 
@@ -80,340 +80,340 @@ def rect(d, x0, y0, w, h, color):
         d.rectangle([x0, y0, x0 + w - 1, y0 + h - 1], fill=color)
 
 
-def shaded_box(d, x0, y0, w, h, base, light, shade):
+def caja_sombreada(d, x0, y0, w, h, base, claro, sombra):
     """Caja con luz arriba a la izquierda y sombra abajo a la derecha."""
     rect(d, x0, y0, w, h, base)
-    rect(d, x0, y0, w, 1, light)
-    rect(d, x0, y0, 1, h, light)
-    rect(d, x0, y0 + h - 1, w, 1, shade)
-    rect(d, x0 + w - 1, y0, 1, h, shade)
+    rect(d, x0, y0, w, 1, claro)
+    rect(d, x0, y0, 1, h, claro)
+    rect(d, x0, y0 + h - 1, w, 1, sombra)
+    rect(d, x0 + w - 1, y0, 1, h, sombra)
 
 
-def round_corners(d, x0, y0, w, h):
+def redondear_esquinas(d, x0, y0, w, h):
     """Borra las 4 esquinas de una caja para que se vea redondeada."""
     for x, y in ((x0, y0), (x0 + w - 1, y0), (x0, y0 + h - 1), (x0 + w - 1, y0 + h - 1)):
         d.point((x, y), fill=(0, 0, 0, 0))
 
 
-def walk_offsets(frame):
+def desplazamientos_caminata(cuadro):
     """Desplazamiento de cada pierna y del cuerpo según el cuadro de caminata."""
     # cuadro 0 y 2: piernas juntas; 1 y 3: una adelante y otra atrás
-    leg = {0: (0, 0), 1: (1, -1), 2: (0, 0), 3: (-1, 1)}[frame]
-    bob = -1 if frame in (1, 3) else 0
-    return leg, bob
+    pierna = {0: (0, 0), 1: (1, -1), 2: (0, 0), 3: (-1, 1)}[cuadro]
+    vaiven = -1 if cuadro in (1, 3) else 0
+    return pierna, vaiven
 
 
-def draw_front_back(d, s, frame, facing_down):
-    (leg_a, leg_b), bob = walk_offsets(frame)
-    cx = FRAME // 2
-    feet_y = 28
-    tw, th, lw, lh = s["torso_w"], s["torso_h"], s["leg_w"], s["leg_h"]
+def dibujar_frente_espalda(d, s, cuadro, mira_abajo):
+    (pierna_a, pierna_b), vaiven = desplazamientos_caminata(cuadro)
+    cx = CUADRO // 2
+    pies_y = 28
+    ancho_torso, grosor, ancho_linea, alto_linea = s["ancho_torso"], s["alto_torso"], s["ancho_pierna"], s["alto_pierna"]
 
     # Piernas (una se alarga y la otra se acorta al caminar)
-    for side, off in ((-1, leg_a), (1, leg_b)):
-        x = cx - lw - 1 if side < 0 else cx + 1
-        h = lh + off
-        top = feet_y - lh - 1
-        shaded_box(d, x, top, lw, h + 1, s["suit"], s["suit_light"], s["suit"])
-        rect(d, x, top + h, lw, 1, s["armor_shade"])          # bota
+    for costado, desplazamiento in ((-1, pierna_a), (1, pierna_b)):
+        x = cx - ancho_linea - 1 if costado < 0 else cx + 1
+        h = alto_linea + desplazamiento
+        arriba = pies_y - alto_linea - 1
+        caja_sombreada(d, x, arriba, ancho_linea, h + 1, s["traje"], s["traje_claro"], s["traje"])
+        rect(d, x, arriba + h, ancho_linea, 1, s["armadura_sombra"])          # bota
 
-    torso_top = feet_y - lh - th + bob
-    tx = cx - tw // 2
+    torso_arriba = pies_y - alto_linea - grosor + vaiven
+    tx = cx - ancho_torso // 2
 
     # Mochila (se ve de espaldas) o detalle trasero
-    if not facing_down and s["pack"]:
-        shaded_box(d, tx + 2, torso_top - 1, tw - 4, th, s["armor_shade"], s["armor"], s["suit"])
+    if not mira_abajo and s["mochila"]:
+        caja_sombreada(d, tx + 2, torso_arriba - 1, ancho_torso - 4, grosor, s["armadura_sombra"], s["armadura"], s["traje"])
 
     # Torso
-    shaded_box(d, tx, torso_top, tw, th, s["armor"], s["armor_light"], s["armor_shade"])
-    rect(d, tx, torso_top + th - 2, tw, 1, s["suit"])           # cinturón
-    if facing_down:
-        rect(d, cx - 1, torso_top + 2, 2, 3, s["accent"])       # núcleo de energía
-        rect(d, cx - 1, torso_top + 4, 2, 1, s["accent_dark"])
+    caja_sombreada(d, tx, torso_arriba, ancho_torso, grosor, s["armadura"], s["armadura_clara"], s["armadura_sombra"])
+    rect(d, tx, torso_arriba + grosor - 2, ancho_torso, 1, s["traje"])           # cinturón
+    if mira_abajo:
+        rect(d, cx - 1, torso_arriba + 2, 2, 3, s["acento"])       # núcleo de energía
+        rect(d, cx - 1, torso_arriba + 4, 2, 1, s["acento_oscuro"])
     else:
-        rect(d, tx + 1, torso_top + 2, tw - 2, 1, s["accent_dark"])
+        rect(d, tx + 1, torso_arriba + 2, ancho_torso - 2, 1, s["acento_oscuro"])
 
     # Hombreras
-    sh = s["shoulder"]
-    if sh:
-        for x in (tx - sh + 1, tx + tw - 1):
-            shaded_box(d, x, torso_top - 1, sh, sh + 1, s["armor"], s["armor_light"], s["armor_shade"])
-            rect(d, x, torso_top + sh - 1, sh, 1, s["accent"])
+    alto_hombro = s["hombro"]
+    if alto_hombro:
+        for x in (tx - alto_hombro + 1, tx + ancho_torso - 1):
+            caja_sombreada(d, x, torso_arriba - 1, alto_hombro, alto_hombro + 1, s["armadura"], s["armadura_clara"], s["armadura_sombra"])
+            rect(d, x, torso_arriba + alto_hombro - 1, alto_hombro, 1, s["acento"])
 
     # Brazos
-    aw = s["arm_w"]
-    arm_top = torso_top + 1 + (sh // 2)
-    for x in (tx - aw, tx + tw):
-        shaded_box(d, x, arm_top, aw, th - 2, s["suit"], s["suit_light"], s["suit"])
-        rect(d, x, arm_top + th - 3, aw, 1, s["armor_shade"])   # guante
+    ancho_brazo = s["ancho_brazo"]
+    brazo_arriba = torso_arriba + 1 + (alto_hombro // 2)
+    for x in (tx - ancho_brazo, tx + ancho_torso):
+        caja_sombreada(d, x, brazo_arriba, ancho_brazo, grosor - 2, s["traje"], s["traje_claro"], s["traje"])
+        rect(d, x, brazo_arriba + grosor - 3, ancho_brazo, 1, s["armadura_sombra"])   # guante
 
     # Arma: de frente, sale hacia abajo desde la mano derecha
-    if facing_down:
+    if mira_abajo:
         # En vista frontal el arma se ve "en escorzo": más corta.
-        glen = max(4, s["gun_len"] - 3)
-        gx = tx + tw - 1
-        gy = arm_top + th - 4
-        shaded_box(d, gx, gy, s["gun_w"], glen, s["gun"], s["gun_light"], s["gun"])
-        rect(d, gx, gy + glen - 1, s["gun_w"], 1, s["accent"])
+        largo_arma2 = max(4, s["largo_arma"] - 3)
+        arma_x = tx + ancho_torso - 1
+        gy = brazo_arriba + grosor - 4
+        caja_sombreada(d, arma_x, gy, s["ancho_arma"], largo_arma2, s["arma"], s["arma_clara"], s["arma"])
+        rect(d, arma_x, gy + largo_arma2 - 1, s["ancho_arma"], 1, s["acento"])
 
     # Cuello (separa la cabeza del torso)
-    hw, hh = s["head_w"], s["head_h"]
-    rect(d, cx - hw // 2 + 1, torso_top, hw - 2, 1, s["suit"])
+    ancho_cabeza, alto_cabeza = s["ancho_cabeza"], s["alto_cabeza"]
+    rect(d, cx - ancho_cabeza // 2 + 1, torso_arriba, ancho_cabeza - 2, 1, s["traje"])
     # Cabeza / casco
-    hx = cx - hw // 2
-    hy = torso_top - hh
-    shaded_box(d, hx, hy, hw, hh, s["armor"], s["armor_light"], s["armor_shade"])
-    round_corners(d, hx, hy, hw, hh)
-    if facing_down:
-        if s.get("slit"):
-            rect(d, hx + 1, hy + 3, hw - 2, 1, s["visor"])     # ranura del casco cerrado
-            rect(d, cx - 1, hy + 4, 2, 1, s["accent_dark"])
+    hx = cx - ancho_cabeza // 2
+    hy = torso_arriba - alto_cabeza
+    caja_sombreada(d, hx, hy, ancho_cabeza, alto_cabeza, s["armadura"], s["armadura_clara"], s["armadura_sombra"])
+    redondear_esquinas(d, hx, hy, ancho_cabeza, alto_cabeza)
+    if mira_abajo:
+        if s.get("ranura"):
+            rect(d, hx + 1, hy + 3, ancho_cabeza - 2, 1, s["visor"])     # ranura del casco cerrado
+            rect(d, cx - 1, hy + 4, 2, 1, s["acento_oscuro"])
         else:
-            rect(d, hx + 1, hy + 3, hw - 2, 2, s["visor"])     # visor
+            rect(d, hx + 1, hy + 3, ancho_cabeza - 2, 2, s["visor"])     # visor
             rect(d, hx + 1, hy + 3, 2, 1, rgba("#ffffff"))
     else:
-        rect(d, hx + 1, hy + hh - 3, hw - 2, 1, s["armor_shade"])
-        rect(d, cx - 1, hy + 1, 2, hh - 3, s["accent_dark"])   # cresta
+        rect(d, hx + 1, hy + alto_cabeza - 3, ancho_cabeza - 2, 1, s["armadura_sombra"])
+        rect(d, cx - 1, hy + 1, 2, alto_cabeza - 3, s["acento_oscuro"])   # cresta
 
-    if s.get("holo"):
-        draw_holo(d, s, hx, hy, hw, frame)
+    if s.get("holograma"):
+        dibujar_holograma(d, s, hx, hy, ancho_cabeza, cuadro)
 
 
-def draw_side(d, s, frame, facing_right):
-    leg, bob = walk_offsets(frame)
-    step = leg[0] * 2           # -2, 0 o 2 píxeles
-    cx = FRAME // 2
-    feet_y = 28
-    tw = max(6, s["torso_w"] - 4)
-    th, lw, lh = s["torso_h"], s["leg_w"], s["leg_h"]
-    sign = 1 if facing_right else -1
+def dibujar_costado(d, s, cuadro, mira_derecha):
+    pierna, vaiven = desplazamientos_caminata(cuadro)
+    paso = pierna[0] * 2           # -2, 0 o 2 píxeles
+    cx = CUADRO // 2
+    pies_y = 28
+    ancho_torso = max(6, s["ancho_torso"] - 4)
+    grosor, ancho_linea, alto_linea = s["alto_torso"], s["ancho_pierna"], s["alto_pierna"]
+    signo = 1 if mira_derecha else -1
 
     # Piernas: una adelante y otra atrás
-    for off, color in ((-step, s["suit"]), (step, s["suit_light"])):
-        x = cx - lw // 2 + off * sign
-        shaded_box(d, x, feet_y - lh - 1, lw, lh + 1, color, s["suit_light"], s["suit"])
-        rect(d, x + (1 if facing_right else -1), feet_y - 1, lw, 1, s["armor_shade"])
+    for desplazamiento, color in ((-paso, s["traje"]), (paso, s["traje_claro"])):
+        x = cx - ancho_linea // 2 + desplazamiento * signo
+        caja_sombreada(d, x, pies_y - alto_linea - 1, ancho_linea, alto_linea + 1, color, s["traje_claro"], s["traje"])
+        rect(d, x + (1 if mira_derecha else -1), pies_y - 1, ancho_linea, 1, s["armadura_sombra"])
 
-    torso_top = feet_y - lh - th + bob
-    tx = cx - tw // 2
+    torso_arriba = pies_y - alto_linea - grosor + vaiven
+    tx = cx - ancho_torso // 2
 
-    if s["pack"]:
-        px = tx - 4 if facing_right else tx + tw
-        shaded_box(d, px, torso_top + 1, 4, th - 2, s["armor_shade"], s["armor"], s["suit"])
-        rect(d, px + 1, torso_top + 2, 2, 1, s["accent"])
+    if s["mochila"]:
+        px = tx - 4 if mira_derecha else tx + ancho_torso
+        caja_sombreada(d, px, torso_arriba + 1, 4, grosor - 2, s["armadura_sombra"], s["armadura"], s["traje"])
+        rect(d, px + 1, torso_arriba + 2, 2, 1, s["acento"])
 
-    shaded_box(d, tx, torso_top, tw, th, s["armor"], s["armor_light"], s["armor_shade"])
-    rect(d, tx, torso_top + th - 2, tw, 1, s["suit"])
-    rect(d, tx + (tw - 3 if facing_right else 1), torso_top + 2, 2, 2, s["accent"])
+    caja_sombreada(d, tx, torso_arriba, ancho_torso, grosor, s["armadura"], s["armadura_clara"], s["armadura_sombra"])
+    rect(d, tx, torso_arriba + grosor - 2, ancho_torso, 1, s["traje"])
+    rect(d, tx + (ancho_torso - 3 if mira_derecha else 1), torso_arriba + 2, 2, 2, s["acento"])
 
-    sh = s["shoulder"]
-    if sh:
-        shaded_box(d, cx - sh // 2 - 1, torso_top - 1, sh + 2, sh, s["armor"], s["armor_light"], s["armor_shade"])
-        rect(d, cx - sh // 2 - 1, torso_top + sh - 2, sh + 2, 1, s["accent"])
+    alto_hombro = s["hombro"]
+    if alto_hombro:
+        caja_sombreada(d, cx - alto_hombro // 2 - 1, torso_arriba - 1, alto_hombro + 2, alto_hombro, s["armadura"], s["armadura_clara"], s["armadura_sombra"])
+        rect(d, cx - alto_hombro // 2 - 1, torso_arriba + alto_hombro - 2, alto_hombro + 2, 1, s["acento"])
 
     # Arma apuntando hacia adelante
-    gun_y = torso_top + th // 2 - 1
-    gl = s["gun_len"]
-    gx = cx + 1 if facing_right else cx - gl - 1
-    shaded_box(d, gx, gun_y, gl, s["gun_w"], s["gun"], s["gun_light"], s["gun"])
-    rect(d, gx + (gl - 1 if facing_right else 0), gun_y, 1, s["gun_w"], s["accent"])
+    arma_y = torso_arriba + grosor // 2 - 1
+    largo_arma = s["largo_arma"]
+    arma_x = cx + 1 if mira_derecha else cx - largo_arma - 1
+    caja_sombreada(d, arma_x, arma_y, largo_arma, s["ancho_arma"], s["arma"], s["arma_clara"], s["arma"])
+    rect(d, arma_x + (largo_arma - 1 if mira_derecha else 0), arma_y, 1, s["ancho_arma"], s["acento"])
     # Brazo sobre el arma
-    aw = s["arm_w"]
-    rect(d, cx - aw // 2, gun_y - 1, aw + 1, 3, s["suit_light"])
+    ancho_brazo = s["ancho_brazo"]
+    rect(d, cx - ancho_brazo // 2, arma_y - 1, ancho_brazo + 1, 3, s["traje_claro"])
 
     # Cabeza de perfil con visor hacia adelante
-    hw, hh = s["head_w"] - 1, s["head_h"]
-    hx = cx - hw // 2 + sign
-    rect(d, cx - hw // 2 + 1, torso_top, hw - 2, 1, s["suit"])        # cuello
-    hy = torso_top - hh
-    shaded_box(d, hx, hy, hw, hh, s["armor"], s["armor_light"], s["armor_shade"])
-    round_corners(d, hx, hy, hw, hh)
-    vx = hx + hw - 3 if facing_right else hx
-    if s.get("slit"):
+    ancho_cabeza, alto_cabeza = s["ancho_cabeza"] - 1, s["alto_cabeza"]
+    hx = cx - ancho_cabeza // 2 + signo
+    rect(d, cx - ancho_cabeza // 2 + 1, torso_arriba, ancho_cabeza - 2, 1, s["traje"])        # cuello
+    hy = torso_arriba - alto_cabeza
+    caja_sombreada(d, hx, hy, ancho_cabeza, alto_cabeza, s["armadura"], s["armadura_clara"], s["armadura_sombra"])
+    redondear_esquinas(d, hx, hy, ancho_cabeza, alto_cabeza)
+    vx = hx + ancho_cabeza - 3 if mira_derecha else hx
+    if s.get("ranura"):
         rect(d, vx, hy + 3, 3, 1, s["visor"])
     else:
         rect(d, vx, hy + 3, 3, 2, s["visor"])
 
-    if s.get("holo"):
-        draw_holo(d, s, hx, hy, hw, frame)
+    if s.get("holograma"):
+        dibujar_holograma(d, s, hx, hy, ancho_cabeza, cuadro)
 
 
-def draw_holo(d, s, hx, hy, hw, frame):
+def dibujar_holograma(d, s, hx, hy, ancho_cabeza, cuadro):
     """Dispositivos holográficos de Iris: un aro sobre la cabeza y un dron chico que flota."""
-    bob = (0, -1, 0, 1)[frame]
+    vaiven = (0, -1, 0, 1)[cuadro]
     # Aro holográfico
-    rect(d, hx + 1, hy - 2, hw - 2, 1, s["accent"][:3] + (200,))
+    rect(d, hx + 1, hy - 2, ancho_cabeza - 2, 1, s["acento"][:3] + (200,))
     # Dron flotando arriba a la derecha
-    dx, dy = hx + hw + 2, hy + 1 + bob
-    rect(d, dx, dy, 3, 3, s["accent_dark"])
+    dx, dy = hx + ancho_cabeza + 2, hy + 1 + vaiven
+    rect(d, dx, dy, 3, 3, s["acento_oscuro"])
     d.point((dx + 1, dy + 1), fill=s["visor"])
-    rect(d, dx - 1, dy + 1, 1, 1, s["accent"][:3] + (160,))
+    rect(d, dx - 1, dy + 1, 1, 1, s["acento"][:3] + (160,))
 
 
-def add_outline(img):
+def agregar_contorno(imagen):
     """Agrega un contorno oscuro de 1 píxel alrededor de la figura."""
-    w, h = img.size
-    src = img.load()
-    out = img.copy()
-    dst = out.load()
+    w, h = imagen.size
+    origen = imagen.load()
+    salida = imagen.copy()
+    destino = salida.load()
     for y in range(h):
         for x in range(w):
-            if src[x, y][3] != 0:
+            if origen[x, y][3] != 0:
                 continue
             for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 nx, ny = x + dx, y + dy
-                if 0 <= nx < w and 0 <= ny < h and src[nx, ny][3] > 0:
-                    dst[x, y] = OUTLINE
+                if 0 <= nx < w and 0 <= ny < h and origen[nx, ny][3] > 0:
+                    destino[x, y] = CONTORNO
                     break
-    return out
+    return salida
 
 
-def character_frame(spec, direction, frame):
-    body = Image.new("RGBA", (FRAME, FRAME), (0, 0, 0, 0))
-    d = ImageDraw.Draw(body)
-    if direction in (DOWN, UP):
-        draw_front_back(d, spec, frame, direction == DOWN)
+def cuadro_personaje(especificacion, direccion, cuadro):
+    cuerpo = Image.new("RGBA", (CUADRO, CUADRO), (0, 0, 0, 0))
+    d = ImageDraw.Draw(cuerpo)
+    if direccion in (ABAJO, ARRIBA):
+        dibujar_frente_espalda(d, especificacion, cuadro, direccion == ABAJO)
     else:
-        draw_side(d, spec, frame, direction == RIGHT)
-    body = add_outline(body)
+        dibujar_costado(d, especificacion, cuadro, direccion == DERECHA)
+    cuerpo = agregar_contorno(cuerpo)
 
     # Sombra en el piso, debajo de todo
-    result = Image.new("RGBA", (FRAME, FRAME), (0, 0, 0, 0))
-    sd = ImageDraw.Draw(result)
-    sw = spec["torso_w"] + 6
-    sd.ellipse([16 - sw // 2, 26, 16 + sw // 2 - 1, 31], fill=(0, 0, 0, 90))
-    result.alpha_composite(body)
-    return result
+    resultado = Image.new("RGBA", (CUADRO, CUADRO), (0, 0, 0, 0))
+    sombra_d = ImageDraw.Draw(resultado)
+    sombra_ancho = especificacion["ancho_torso"] + 6
+    sombra_d.ellipse([16 - sombra_ancho // 2, 26, 16 + sombra_ancho // 2 - 1, 31], fill=(0, 0, 0, 90))
+    resultado.alpha_composite(cuerpo)
+    return resultado
 
 
-def character_sheet(spec):
+def hoja_personaje(especificacion):
     """Spritesheet de 4 filas (abajo, izquierda, derecha, arriba) x 4 cuadros."""
-    sheet = Image.new("RGBA", (FRAME * 4, FRAME * 4), (0, 0, 0, 0))
-    for direction in (DOWN, LEFT, RIGHT, UP):
-        for frame in range(4):
-            sheet.alpha_composite(character_frame(spec, direction, frame), (frame * FRAME, direction * FRAME))
-    return sheet
+    hoja = Image.new("RGBA", (CUADRO * 4, CUADRO * 4), (0, 0, 0, 0))
+    for direccion in (ABAJO, IZQUIERDA, DERECHA, ARRIBA):
+        for cuadro in range(4):
+            hoja.alpha_composite(cuadro_personaje(especificacion, direccion, cuadro), (cuadro * CUADRO, direccion * CUADRO))
+    return hoja
 
 
 # ----------------------------------------------------------------------
 # Efectos: proyectiles, escudo, anillo de equipo
 # ----------------------------------------------------------------------
 
-def glow_ball(size, core_radius):
+def bola_brillo(tamanio, radio_centro):
     """Bola de energía blanca con halo. Se tiñe con el color del equipo al dibujarla."""
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    px = img.load()
-    c = (size - 1) / 2
-    for y in range(size):
-        for x in range(size):
-            dist = math.hypot(x - c, y - c)
-            if dist <= core_radius:
+    imagen = Image.new("RGBA", (tamanio, tamanio), (0, 0, 0, 0))
+    px = imagen.load()
+    c = (tamanio - 1) / 2
+    for y in range(tamanio):
+        for x in range(tamanio):
+            distancia = math.hypot(x - c, y - c)
+            if distancia <= radio_centro:
                 px[x, y] = (255, 255, 255, 255)
-            elif dist <= size / 2:
-                t = (dist - core_radius) / (size / 2 - core_radius)
+            elif distancia <= tamanio / 2:
+                t = (distancia - radio_centro) / (tamanio / 2 - radio_centro)
                 px[x, y] = (230, 240, 255, int(200 * (1 - t) ** 1.5))
-    return img
+    return imagen
 
 
-def heavy_shell(size):
+def proyectil_pesado(tamanio):
     """Proyectil pesado de Brutus: núcleo sólido con borde marcado."""
-    img = glow_ball(size, size * 0.30)
-    d = ImageDraw.Draw(img)
-    r = size * 0.36
-    c = (size - 1) / 2
+    imagen = bola_brillo(tamanio, tamanio * 0.30)
+    d = ImageDraw.Draw(imagen)
+    r = tamanio * 0.36
+    c = (tamanio - 1) / 2
     d.ellipse([c - r, c - r, c + r, c + r], outline=(255, 255, 255, 255), width=1)
-    return img
+    return imagen
 
 
-def shield_arc():
+def arco_escudo():
     """Arco del Escudo Cinético, apuntando hacia la derecha (se rota al dibujarlo)."""
-    size = 48
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    px = img.load()
-    c = (size - 1) / 2
-    for y in range(size):
-        for x in range(size):
+    tamanio = 48
+    imagen = Image.new("RGBA", (tamanio, tamanio), (0, 0, 0, 0))
+    px = imagen.load()
+    c = (tamanio - 1) / 2
+    for y in range(tamanio):
+        for x in range(tamanio):
             dx, dy = x - c, y - c
-            dist = math.hypot(dx, dy)
-            ang = abs(math.degrees(math.atan2(dy, dx)))
-            if 16 <= dist <= 22.5 and ang <= 66:
-                fade = 1 - (ang / 66) ** 4
-                if dist >= 21 or dist <= 17:
-                    px[x, y] = (255, 236, 190, int(255 * fade))          # bordes brillantes
+            distancia = math.hypot(dx, dy)
+            angulo = abs(math.degrees(math.atan2(dy, dx)))
+            if 16 <= distancia <= 22.5 and angulo <= 66:
+                desvanecido = 1 - (angulo / 66) ** 4
+                if distancia >= 21 or distancia <= 17:
+                    px[x, y] = (255, 236, 190, int(255 * desvanecido))          # bordes brillantes
                 else:
-                    px[x, y] = (255, 150, 40, int(150 * fade))           # interior traslúcido
-    return img
+                    px[x, y] = (255, 150, 40, int(150 * desvanecido))           # interior traslúcido
+    return imagen
 
 
-def pulse_ball(size):
+def bola_pulso(tamanio):
     """Pulso de energía de Iris: anillo con centro brillante (se tiñe al dibujarlo)."""
-    img = glow_ball(size, size * 0.16)
-    d = ImageDraw.Draw(img)
-    r = size * 0.32
-    c = (size - 1) / 2
+    imagen = bola_brillo(tamanio, tamanio * 0.16)
+    d = ImageDraw.Draw(imagen)
+    r = tamanio * 0.32
+    c = (tamanio - 1) / 2
     d.ellipse([c - r, c - r, c + r, c + r], outline=(255, 255, 255, 230), width=1)
-    return img
+    return imagen
 
 
-def dart(size):
+def dardo(tamanio):
     """Dardo de Phantom: un rombo fino y muy brillante."""
-    img = glow_ball(size, 0.8)
-    d = ImageDraw.Draw(img)
-    c = (size - 1) / 2
-    d.polygon([(c, 0), (c + size * 0.18, c), (c, size - 1), (c - size * 0.18, c)], fill=(255, 255, 255, 255))
-    d.polygon([(0, c), (c, c - size * 0.12), (size - 1, c), (c, c + size * 0.12)], fill=(255, 255, 255, 200))
-    return img
+    imagen = bola_brillo(tamanio, 0.8)
+    d = ImageDraw.Draw(imagen)
+    c = (tamanio - 1) / 2
+    d.polygon([(c, 0), (c + tamanio * 0.18, c), (c, tamanio - 1), (c - tamanio * 0.18, c)], fill=(255, 255, 255, 255))
+    d.polygon([(0, c), (c, c - tamanio * 0.12), (tamanio - 1, c), (c, c + tamanio * 0.12)], fill=(255, 255, 255, 200))
+    return imagen
 
 
-def regen_zone():
+def zona_regeneracion():
     """Campo de Regeneración de Iris (blanco: se tiñe de verde al dibujarlo)."""
-    size = 128
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    px = img.load()
-    c = (size - 1) / 2
-    R = size / 2 - 1
-    for y in range(size):
-        for x in range(size):
-            dist = math.hypot(x - c, y - c)
-            if dist > R:
+    tamanio = 128
+    imagen = Image.new("RGBA", (tamanio, tamanio), (0, 0, 0, 0))
+    px = imagen.load()
+    c = (tamanio - 1) / 2
+    R = tamanio / 2 - 1
+    for y in range(tamanio):
+        for x in range(tamanio):
+            distancia = math.hypot(x - c, y - c)
+            if distancia > R:
                 continue
-            t = dist / R
+            t = distancia / R
             a = 40 + 70 * t ** 3                       # más intenso hacia el borde
-            if dist >= R - 2.5:
+            if distancia >= R - 2.5:
                 a = 230                                 # borde
-            elif abs(dist - R * 0.62) < 0.8:
+            elif abs(distancia - R * 0.62) < 0.8:
                 a = 110                                 # anillo interior
             px[x, y] = (255, 255, 255, int(a))
-    d = ImageDraw.Draw(img)
+    d = ImageDraw.Draw(imagen)
     # Cruces de curación repartidas en el círculo
-    for ang in range(0, 360, 60):
-        a = math.radians(ang + 30)
+    for angulo in range(0, 360, 60):
+        a = math.radians(angulo + 30)
         x, y = c + math.cos(a) * R * 0.8, c + math.sin(a) * R * 0.8
         d.rectangle([x - 1, y - 4, x + 1, y + 4], fill=(255, 255, 255, 200))
         d.rectangle([x - 4, y - 1, x + 4, y + 1], fill=(255, 255, 255, 200))
     d.rectangle([c - 3, c - 10, c + 3, c + 10], fill=(255, 255, 255, 150))
     d.rectangle([c - 10, c - 3, c + 10, c + 3], fill=(255, 255, 255, 150))
-    return img
+    return imagen
 
 
-def team_ring():
+def anillo_equipo():
     """Anillo blanco que se dibuja bajo los pies, teñido con el color del equipo."""
-    img = Image.new("RGBA", (32, 16), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
+    imagen = Image.new("RGBA", (32, 16), (0, 0, 0, 0))
+    d = ImageDraw.Draw(imagen)
     d.ellipse([1, 2, 30, 13], outline=(255, 255, 255, 230), width=2)
-    return img
+    return imagen
 
 
 # ----------------------------------------------------------------------
 # Mapa
 # ----------------------------------------------------------------------
 
-def floor_tile():
+def baldosa_piso():
     """Baldosa metálica de 64x64 que se repite sin cortes."""
-    rnd = random.Random(7)
-    size = 64
-    img = Image.new("RGBA", (size, size), rgba("#1b2129"))
-    d = ImageDraw.Draw(img)
+    azar = random.Random(7)
+    tamanio = 64
+    imagen = Image.new("RGBA", (tamanio, tamanio), rgba("#1b2129"))
+    d = ImageDraw.Draw(imagen)
     # Cuatro placas de 32x32 con juntas
     for py in (0, 32):
         for px in (0, 32):
@@ -424,110 +424,110 @@ def floor_tile():
             d.line([px + 1, py + 30, px + 30, py + 30], fill=rgba("#161b21"))
             d.line([px + 30, py + 1, px + 30, py + 30], fill=rgba("#161b21"))
             for bx, by in ((3, 3), (28, 3), (3, 28), (28, 28)):   # remaches
-                img.putpixel((px + bx, py + by), rgba("#39424d"))
+                imagen.putpixel((px + bx, py + by), rgba("#39424d"))
     # Desgaste leve
     for _ in range(140):
-        x, y = rnd.randrange(size), rnd.randrange(size)
-        r, g, b, a = img.getpixel((x, y))
-        k = rnd.choice((-6, -4, 4, 6))
-        img.putpixel((x, y), (max(0, r + k), max(0, g + k), max(0, b + k), a))
+        x, y = azar.randrange(tamanio), azar.randrange(tamanio)
+        r, g, b, a = imagen.getpixel((x, y))
+        k = azar.choice((-6, -4, 4, 6))
+        imagen.putpixel((x, y), (max(0, r + k), max(0, g + k), max(0, b + k), a))
     # Línea de energía tenue en una de las juntas
-    d.line([0, 32, size - 1, 32], fill=rgba("#163a48"))
-    return img
+    d.line([0, 32, tamanio - 1, 32], fill=rgba("#163a48"))
+    return imagen
 
 
-def wall_tile():
+def baldosa_pared():
     """Pared perimetral de 20x20 que se repite a lo largo y a lo alto."""
-    size = 20
-    img = Image.new("RGBA", (size, size), rgba("#3a424d"))
-    d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, size - 1, 2], fill=rgba("#55606d"))
-    d.rectangle([0, size - 3, size - 1, size - 1], fill=rgba("#262c34"))
-    d.rectangle([0, 8, size - 1, 11], fill=rgba("#2c333c"))
-    for x in range(0, size, 5):                        # franja de advertencia
+    tamanio = 20
+    imagen = Image.new("RGBA", (tamanio, tamanio), rgba("#3a424d"))
+    d = ImageDraw.Draw(imagen)
+    d.rectangle([0, 0, tamanio - 1, 2], fill=rgba("#55606d"))
+    d.rectangle([0, tamanio - 3, tamanio - 1, tamanio - 1], fill=rgba("#262c34"))
+    d.rectangle([0, 8, tamanio - 1, 11], fill=rgba("#2c333c"))
+    for x in range(0, tamanio, 5):                        # franja de advertencia
         d.polygon([(x, 8), (x + 2, 8), (x + 4, 11), (x + 2, 11)], fill=rgba("#c9a227"))
-    d.line([0, 0, 0, size - 1], fill=rgba("#2a3038"))
-    return img
+    d.line([0, 0, 0, tamanio - 1], fill=rgba("#2a3038"))
+    return imagen
 
 
-def cover_block():
+def bloque_cobertura():
     """Bloque de cobertura de 48x48: contenedor reforzado con un Núcleo Over."""
-    size = 48
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, size - 1, size - 1], fill=rgba("#11151a"))
-    d.rectangle([1, 1, size - 2, size - 2], fill=rgba("#4a535e"))
-    d.rectangle([1, 1, size - 2, 3], fill=rgba("#6a7581"))
-    d.rectangle([1, 1, 3, size - 2], fill=rgba("#5d6773"))
-    d.rectangle([1, size - 4, size - 2, size - 2], fill=rgba("#323941"))
-    d.rectangle([size - 4, 1, size - 2, size - 2], fill=rgba("#373e47"))
-    d.rectangle([8, 8, size - 9, size - 9], fill=rgba("#3b434d"), outline=rgba("#2a3038"))
-    for c in ((5, 5), (size - 6, 5), (5, size - 6), (size - 6, size - 6)):
+    tamanio = 48
+    imagen = Image.new("RGBA", (tamanio, tamanio), (0, 0, 0, 0))
+    d = ImageDraw.Draw(imagen)
+    d.rectangle([0, 0, tamanio - 1, tamanio - 1], fill=rgba("#11151a"))
+    d.rectangle([1, 1, tamanio - 2, tamanio - 2], fill=rgba("#4a535e"))
+    d.rectangle([1, 1, tamanio - 2, 3], fill=rgba("#6a7581"))
+    d.rectangle([1, 1, 3, tamanio - 2], fill=rgba("#5d6773"))
+    d.rectangle([1, tamanio - 4, tamanio - 2, tamanio - 2], fill=rgba("#323941"))
+    d.rectangle([tamanio - 4, 1, tamanio - 2, tamanio - 2], fill=rgba("#373e47"))
+    d.rectangle([8, 8, tamanio - 9, tamanio - 9], fill=rgba("#3b434d"), outline=rgba("#2a3038"))
+    for c in ((5, 5), (tamanio - 6, 5), (5, tamanio - 6), (tamanio - 6, tamanio - 6)):
         d.rectangle([c[0] - 1, c[1] - 1, c[0] + 1, c[1] + 1], fill=rgba("#7c8794"))
     # Núcleo Over en el centro
-    cx = cy = size // 2
+    cx = cy = tamanio // 2
     d.ellipse([cx - 7, cy - 7, cx + 6, cy + 6], fill=rgba("#1a2e38"), outline=rgba("#0f1b22"))
     d.ellipse([cx - 4, cy - 4, cx + 3, cy + 3], fill=rgba("#28c8e8"))
     d.ellipse([cx - 2, cy - 2, cx + 1, cy + 1], fill=rgba("#bff6ff"))
-    return img
+    return imagen
 
 
-def core_decal():
+def decorado_centro():
     """Marca del Núcleo Over que se pinta en el centro del piso."""
-    size = 96
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    c = size // 2
-    d.ellipse([4, 4, size - 5, size - 5], outline=rgba("#1d5566", 200), width=2)
-    d.ellipse([16, 16, size - 17, size - 17], outline=rgba("#1a4756", 160), width=1)
-    for ang in range(0, 360, 45):
+    tamanio = 96
+    imagen = Image.new("RGBA", (tamanio, tamanio), (0, 0, 0, 0))
+    d = ImageDraw.Draw(imagen)
+    c = tamanio // 2
+    d.ellipse([4, 4, tamanio - 5, tamanio - 5], outline=rgba("#1d5566", 200), width=2)
+    d.ellipse([16, 16, tamanio - 17, tamanio - 17], outline=rgba("#1a4756", 160), width=1)
+    for angulo in range(0, 360, 45):
         r1, r2 = 20, 44
-        a = math.radians(ang)
+        a = math.radians(angulo)
         d.line([c + r1 * math.cos(a), c + r1 * math.sin(a), c + r2 * math.cos(a), c + r2 * math.sin(a)],
                fill=rgba("#1a4756", 150), width=1)
     d.ellipse([c - 10, c - 10, c + 9, c + 9], fill=rgba("#123642", 220), outline=rgba("#2ab7d6", 220))
     d.ellipse([c - 4, c - 4, c + 3, c + 3], fill=rgba("#7ee9ff", 230))
-    return img
+    return imagen
 
 
-def spawn_zone(color):
+def zona_aparicion(color):
     """Zona de aparición de un equipo (se pinta en el piso)."""
     w, h = 72, 168
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
+    imagen = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(imagen)
     d.rectangle([0, 0, w - 1, h - 1], fill=color[:3] + (28,), outline=color[:3] + (120,))
     for y in range(6, h - 6, 12):
         d.line([4, y, 10, y + 6], fill=color[:3] + (70,))
         d.line([w - 11, y, w - 5, y + 6], fill=color[:3] + (70,))
-    return img
+    return imagen
 
 
-def main():
-    os.makedirs(ASSETS, exist_ok=True)
-    out = {
-        "volt_walk.png": character_sheet(VOLT),
-        "brutus_walk.png": character_sheet(BRUTUS),
-        "iris_walk.png": character_sheet(IRIS),
-        "phantom_walk.png": character_sheet(PHANTOM),
-        "projectile_volt.png": glow_ball(8, 1.8),
-        "projectile_brutus.png": heavy_shell(12),
-        "projectile_iris.png": pulse_ball(9),
-        "projectile_phantom.png": dart(9),
-        "regen_zone.png": regen_zone(),
-        "shield.png": shield_arc(),
-        "team_ring.png": team_ring(),
-        "floor_tile.png": floor_tile(),
-        "wall_tile.png": wall_tile(),
-        "wall_tile_v.png": wall_tile().rotate(90),       # para las paredes verticales
-        "cover_block.png": cover_block(),
-        "core_decal.png": core_decal(),
-        "spawn_blue.png": spawn_zone(rgba("#3d8bff")),
-        "spawn_red.png": spawn_zone(rgba("#ff4d4d")),
+def principal():
+    os.makedirs(RECURSOS, exist_ok=True)
+    salida = {
+        "volt_walk.png": hoja_personaje(VOLT),
+        "brutus_walk.png": hoja_personaje(BRUTUS),
+        "iris_walk.png": hoja_personaje(IRIS),
+        "phantom_walk.png": hoja_personaje(PHANTOM),
+        "projectile_volt.png": bola_brillo(8, 1.8),
+        "projectile_brutus.png": proyectil_pesado(12),
+        "projectile_iris.png": bola_pulso(9),
+        "projectile_phantom.png": dardo(9),
+        "regen_zone.png": zona_regeneracion(),
+        "shield.png": arco_escudo(),
+        "team_ring.png": anillo_equipo(),
+        "floor_tile.png": baldosa_piso(),
+        "wall_tile.png": baldosa_pared(),
+        "wall_tile_v.png": baldosa_pared().rotate(90),       # para las paredes verticales
+        "cover_block.png": bloque_cobertura(),
+        "core_decal.png": decorado_centro(),
+        "spawn_blue.png": zona_aparicion(rgba("#3d8bff")),
+        "spawn_red.png": zona_aparicion(rgba("#ff4d4d")),
     }
-    for name, img in out.items():
-        img.save(os.path.join(ASSETS, name))
-        print("generado:", name, img.size)
+    for nombre, imagen in salida.items():
+        imagen.save(os.path.join(RECURSOS, nombre))
+        print("generado:", nombre, imagen.size)
 
 
 if __name__ == "__main__":
-    main()
+    principal()

@@ -3,7 +3,7 @@ package com.OverZone.Scardaoni.gwt;
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.backends.gwt.GwtApplication;
 import com.badlogic.gdx.backends.gwt.GwtApplicationConfiguration;
-import com.OverZone.Scardaoni.Main;
+import com.OverZone.Scardaoni.JuegoOverZone;
 
 /** Launches the GWT application. */
 public class GwtLauncher extends GwtApplication {
@@ -20,6 +20,6 @@ public class GwtLauncher extends GwtApplication {
         }
         @Override
         public ApplicationListener createApplicationListener () {
-            return new Main();
+            return new JuegoOverZone();
         }
 }

@@ -7,17 +7,17 @@ Este documento explica cómo funciona la parte de red del juego: quién hace qu�
 ```mermaid
 flowchart LR
     subgraph C1["Cliente 1"]
-        I1["Teclado y mouse"] --> N1["ClientNetwork"]
-        N1 --> D1["GameScreen<br/>dibuja el estado"]
+        I1["Teclado y mouse"] --> N1["RedCliente"]
+        N1 --> D1["PantallaJuego<br/>dibuja el estado"]
     end
     subgraph S["Servidor (otra PC)"]
         R["Hilo de recepción"] --> Q["Cola de mensajes"]
-        Q --> L["Bucle de juego 60/s<br/>MatchSimulation"]
+        Q --> L["Bucle de juego 60/s<br/>SimulacionPartida"]
         L --> E["Envío del estado 30/s"]
     end
     subgraph C2["Cliente 2"]
-        I2["Teclado y mouse"] --> N2["ClientNetwork"]
-        N2 --> D2["GameScreen<br/>dibuja el estado"]
+        I2["Teclado y mouse"] --> N2["RedCliente"]
+        N2 --> D2["PantallaJuego<br/>dibuja el estado"]
     end
     N1 -- "INPUT / PING (UDP)" --> R
     N2 -- "INPUT / PING (UDP)" --> R
@@ -25,7 +25,7 @@ flowchart LR
     E -- "STATE (UDP)" --> N2
 ```
 
-* El **servidor** es el único que tiene la partida real (`MatchSimulation`). Recibe entradas, simula y envía el resultado.
+* El **servidor** es el único que tiene la partida real (`SimulacionPartida`). Recibe entradas, simula y envía el resultado.
 * Los **clientes** envían entradas y dibujan lo que reciben. Un cliente nunca decide si un disparo pegó, ni cuánta vida tiene alguien, ni quién ganó.
 
 Así, todos los clientes ven la misma partida: no puede haber dos clientes con resultados distintos, porque el resultado lo calcula uno solo.
@@ -34,39 +34,39 @@ Así, todos los clientes ven la misma partida: no puede haber dos clientes con r
 
 | Repositorio | Contiene |
 | --- | --- |
-| `OverZoneScardaoni` (cliente) | Pantallas, gráficos, audio, entrada y `ClientNetwork`. **No** contiene la lógica de la partida. |
-| `OverZoneScardaoni-Server` (servidor) | `GameServer`, `ConnectedClient`, `ServerLauncher` y, en `server.game`, `MatchSimulation`, `Player` y `Projectile`. |
-| Los dos (paquete `shared`) | `Protocol`, `PlayerInput`, `WorldSnapshot`, `MatchPhase`, `Team`, `Direction`, `CharacterType`, `GameConstants`, `Arena`, `Obstacle`. |
+| `OverZoneScardaoni` (cliente) | Pantallas, gráficos, audio, entrada y `RedCliente`. **No** contiene la lógica de la partida. |
+| `OverZoneScardaoni-Server` (servidor) | `ServidorJuego`, `ClienteConectado`, `LanzadorServidor` y, en `servidor.juego`, `SimulacionPartida`, `Jugador` y `Proyectil`. |
+| Los dos (paquete `compartido`) | `Protocolo`, `EntradaJugador`, `EstadoMundo`, `FasePartida`, `Equipo`, `Direccion`, `TipoPersonaje`, `ConstantesJuego`, `Arena`, `Obstaculo`. |
 
-El paquete `shared` está copiado en los dos repositorios y tiene que ser idéntico en ambos. Para que una diferencia no pase desapercibida, el cliente envía `Protocol.VERSION` al conectarse: si no coincide con la del servidor, la conexión se rechaza (`REJECT;VERSION`) y el cliente muestra qué versión tiene cada uno.
+El paquete `compartido` está copiado en los dos repositorios y tiene que ser idéntico en ambos. Para que una diferencia no pase desapercibida, el cliente envía `Protocolo.VERSION` al conectarse: si no coincide con la del servidor, la conexión se rechaza (`REJECT;VERSION`) y el cliente muestra qué versión tiene cada uno.
 
 ## 2. Hilos
 
 | Programa | Hilo | Qué hace |
 | --- | --- | --- |
-| Servidor | Recepción (`ServerReceive`) | Espera paquetes UDP (`socket.receive`, bloqueante) y los deja en una cola segura (`ConcurrentLinkedQueue`). |
-| Servidor | Bucle de juego (`ServerGameLoop`) | 60 veces por segundo: procesa la cola, desconecta clientes en silencio, avanza la partida y, cada dos vueltas, envía el estado. Es el **único** hilo que toca la partida, así que no hay dos hilos modificándola a la vez. |
+| Servidor | Recepción (`ServidorRecepcion`) | Espera paquetes UDP (`socket.receive`, bloqueante) y los deja en una cola segura (`ConcurrentLinkedQueue`). |
+| Servidor | Bucle de juego (`ServidorBucleJuego`) | 60 veces por segundo: procesa la cola, desconecta clientes en silencio, avanza la partida y, cada dos vueltas, envía el estado. Es el **único** hilo que toca la partida, así que no hay dos hilos modificándola a la vez. |
 | Servidor | Principal | Lee comandos de la consola (`estado`, `retardo`, `perdida`, `normal`, `salir`). |
 | Cliente | Dibujo (LibGDX) | Lee teclado y mouse, envía `INPUT` y dibuja. |
-| Cliente | Red (`ClientNetwork`) | Busca el servidor, se conecta, recibe estados, envía `PING` cada 250 ms y detecta si se perdió la conexión. |
+| Cliente | Red (`RedCliente`) | Busca el servidor, se conecta, recibe estados, envía `PING` cada 250 ms y detecta si se perdió la conexión. |
 
-Los datos que comparten los dos hilos del cliente se guardan en variables `volatile` y en objetos que no cambian después de creados (`WorldSnapshot`): el hilo de red arma una foto nueva y la reemplaza entera; el hilo de dibujo nunca ve una foto a medio armar.
+Los datos que comparten los dos hilos del cliente se guardan en variables `volatile` y en objetos que no cambian después de creados (`EstadoMundo`): el hilo de red arma una foto nueva y la reemplaza entera; el hilo de dibujo nunca ve una foto a medio armar.
 
 ## 3. Mensajes
 
-Todos son texto con los campos separados por `;`. Los números con decimales siempre se escriben con **punto** (`Protocol.f`): con la configuración regional de Argentina, `String.format` escribiría `12,5` y la coma rompería el mensaje.
+Todos son texto con los campos separados por `;`. Los números con decimales siempre se escriben con **punto** (`Protocolo.f`): con la configuración regional de Argentina, `String.format` escribiría `12,5` y la coma rompería el mensaje.
 
 | Mensaje | Sentido | Para qué |
 | --- | --- | --- |
 | `OVERZONE_DISCOVER` | Cliente → todos (broadcast) | ¿Hay un servidor en la red? |
-| `OVERZONE_SERVER;nombre;jugadores;max;version` | Servidor → cliente | Respuesta al broadcast. Si la versión no coincide, el cliente avisa y no se conecta. |
+| `OVERZONE_SERVER;nombre;jugadores;maximo;version` | Servidor → cliente | Respuesta al broadcast. Si la versión no coincide, el cliente avisa y no se conecta. |
 | `CONNECT;nombre;version` | Cliente → servidor | Pedido para unirse. Se reintenta cada 500 ms. |
 | `WELCOME;id` | Servidor → cliente | Aceptado; se le asigna un número de jugador. |
 | `REJECT;FULL` / `REJECT;UNKNOWN` / `REJECT;VERSION;v` | Servidor → cliente | Partida llena / el servidor no conoce a este cliente / versión de protocolo distinta. |
-| `INPUT;seq;moveX;moveY;aimX;aimY;fire;contadorHabilidad` | Cliente → servidor | Entradas del jugador, una por frame. |
+| `INPUT;secuencia;moverX;moverY;apuntarX;apuntarY;disparar;contadorHabilidad` | Cliente → servidor | Entradas del jugador, una por frame. |
 | `PING;listo;personaje;nPedidoModo;modo;marcaDeTiempo` | Cliente → servidor | Latido cada 250 ms; además informa si el jugador marcó "listo", qué personaje eligió y su último pedido de modo (número y modo). El servidor solo acepta el personaje en la sala de espera, y el modo solo si lo pide el anfitrión y se puede jugar con los jugadores que hay. |
 | `PONG;marcaDeTiempo` | Servidor → cliente | Devuelve la marca: el cliente calcula el retardo de ida y vuelta. |
-| `STATE;seq;fase;tiempo;azul;rojo;ganador;motivo;modo;anfitrion;JUGADORES;PROYECTILES;ZONAS;POWERUPS` | Servidor → clientes | Estado completo de la partida, 30 veces por segundo. Incluye el modo, quién es el anfitrión, los Campos de Regeneración de Iris y los Power-Ups del mapa. Cada jugador lleva además los segundos que le quedan a cada Power-Up (ej.: `0:3.5:0:0`). |
+| `STATE;secuencia;fase;tiempo;azul;rojo;ganador;motivo;modo;anfitrion;JUGADORES;PROYECTILES;ZONAS;POWERUPS` | Servidor → clientes | Estado completo de la partida, 30 veces por segundo. Incluye el modo, quién es el anfitrión, los Campos de Regeneración de Iris y los Power-Ups del mapa. Cada jugador lleva además los segundos que le quedan a cada Power-Up (ej.: `0:3.5:0:0`). |
 | `DISCONNECT` | Cliente → servidor | Me voy (se envía dos veces). |
 | `SHUTDOWN` | Servidor → clientes | El servidor se cierra (se envía dos veces). |
 
@@ -87,7 +87,7 @@ sequenceDiagram
     loop 30 veces por segundo
         S-->>C: STATE;...
     end
-    loop Cada frame, durante la partida
+    loop Cada cuadro, durante la partida
         C->>S: INPUT;...
     end
 ```
@@ -96,16 +96,16 @@ sequenceDiagram
 
 ```mermaid
 stateDiagram-v2
-    [*] --> LOBBY
-    LOBBY --> COUNTDOWN : todos listos (Todos contra todos: 2 o más; Equipos: 4)
-    COUNTDOWN --> LOBBY : alguien deja de estar listo o se va
-    COUNTDOWN --> PLAYING : 3 segundos
-    PLAYING --> RESULTS : tiempo agotado
-    PLAYING --> RESULTS : no quedan rivales (un equipo vacío o 1 solo jugador)
-    RESULTS --> LOBBY : 8 segundos (nadie listo)
+    [*] --> SALA
+    SALA --> CUENTA_REGRESIVA : todos listos (Todos contra todos: 2 o más; Equipos: 4)
+    CUENTA_REGRESIVA --> SALA : alguien deja de estar listo o se va
+    CUENTA_REGRESIVA --> JUGANDO : 3 segundos
+    JUGANDO --> RESULTADOS : tiempo agotado
+    JUGANDO --> RESULTADOS : no quedan rivales (un equipo vacío o 1 solo jugador)
+    RESULTADOS --> SALA : 8 segundos (nadie listo)
 ```
 
-La etapa viaja dentro de cada `STATE`. Los clientes no cambian de pantalla por su cuenta: `Main.followServer` compara la etapa recibida con la pantalla actual y cambia cuando no coinciden (sala → juego → resultados → sala).
+La etapa viaja dentro de cada `STATE`. Los clientes no cambian de pantalla por su cuenta: `JuegoOverZone.seguirServidor` compara la etapa recibida con la pantalla actual y cambia cuando no coinciden (sala → juego → resultados → sala).
 
 ### Modos de juego y anfitrión
 
@@ -114,17 +114,17 @@ La etapa viaja dentro de cada `STATE`. Los clientes no cambian de pantalla por s
 * El servidor aplica el pedido si viene del anfitrión, la partida no empezó y el modo se puede jugar (Equipos 2v2: exactamente 4 jugadores). Si lo rechaza, lo escribe en la consola con el motivo ("no es el anfitrion", "hacen falta 4 jugadores", "la partida ya empezo").
 * El cliente revisa lo mismo antes de mandar el pedido, para avisarle al jugador en pantalla por qué no se puede (por ejemplo, "Solo el anfitrión (Facu) puede cambiar el modo"). Mientras espera la confirmación, el botón titila; si en 1,5 s el estado no muestra el modo nuevo, avisa que no se aceptó.
 * Si estando en Equipos alguien se va de la sala, el servidor vuelve a Todos contra todos.
-* El campo `team` de cada jugador significa cosas distintas según el modo: en Equipos es el equipo (0 azul, 1 rojo); en Todos contra todos, el color propio de cada jugador (0 a 3). El campo `ganador` es el equipo o el id del jugador ganador (-1 si hay empate).
+* El campo `equipo` de cada jugador significa cosas distintas según el modo: en Equipos es el equipo (0 azul, 1 rojo); en Todos contra todos, el color propio de cada jugador (0 a 3). El campo `ganador` es el equipo o el id del jugador ganador (-1 si hay empate).
 
 ### Habilidades sincronizadas por el servidor
 
-* **Campo de Regeneración (Iris):** el servidor crea la zona (`RegenZone`), le descuenta el tiempo y en cada paso cura a los aliados que están adentro. Viaja en la lista `ZONAS` del estado; el cliente solo la dibuja.
+* **Campo de Regeneración (Iris):** el servidor crea la zona (`ZonaRegeneracion`), le descuenta el tiempo y en cada paso cura a los aliados que están adentro. Viaja en la lista `ZONAS` del estado; el cliente solo la dibuja.
 * **Camuflaje Óptico (Phantom):** el servidor marca a Phantom con la habilidad activa (y la corta si dispara). Cada cliente decide cómo dibujarlo según si es rival o aliado, pero todos parten del mismo dato, así que ven el mismo efecto al mismo tiempo.
 
 ### Power-Ups
 
-* El servidor (`MatchSimulation.updatePowerUps`) decide cuándo aparece uno (a los 5 s y después cada 8 s, hasta 3), elige al azar el tipo y un punto libre de `Arena.POWERUP_SPAWNS`, detecta qué jugador lo toca y le aplica el efecto (`Player.applyPowerUp`).
-* Los efectos se aplican en el servidor: el Turbo en `Player.getCurrentSpeed`, el Blindaje en `Player.takeDamage` y la Sobrecarga al crear el proyectil, que guarda su propio daño.
+* El servidor (`SimulacionPartida.actualizarPotenciadores`) decide cuándo aparece uno (a los 5 s y después cada 8 s, hasta 3), elige al azar el tipo y un punto libre de `Arena.APARICIONES_POTENCIADORES`, detecta qué jugador lo toca y le aplica el efecto (`Jugador.aplicarPotenciador`).
+* Los efectos se aplican en el servidor: el Turbo en `Jugador.getVelocidadActual`, el Blindaje en `Jugador.recibirDanio` y la Sobrecarga al crear el proyectil, que guarda su propio daño.
 * El cliente recibe la lista de Power-Ups y los tiempos de cada jugador en el `STATE`. El aviso en pantalla y el sonido no necesitan un mensaje aparte: si un Power-Up desaparece durante la partida con un jugador encima, el cliente deduce que lo agarró. Como el estado es completo, aunque se pierda un paquete el siguiente muestra lo mismo.
 
 ## 5. Retardos y pérdida de paquetes (requisito 3)
@@ -153,7 +153,7 @@ Para comprobarlo, la consola del servidor permite simular una red mala: `retardo
 | El servidor se cierra (`salir` o Ctrl+C) | Envía `SHUTDOWN`; los clientes muestran "El servidor se cerró" y vuelven al menú. |
 | El servidor se cae sin avisar | Los clientes no reciben nada durante 3 s y muestran "Se perdió la conexión". |
 | El servidor se reinicia | Si un cliente viejo le envía datos, responde `REJECT;UNKNOWN`; el cliente lo informa y puede volver a conectarse. |
-| Cierre de hilos y sockets | Cliente: el hilo de red es *daemon* y `stop()` cierra el socket. Servidor: `stop()` avisa a los clientes, cierra el socket (lo que desbloquea al hilo de recepción) y espera que los hilos terminen. No queda ningún proceso abierto. |
+| Cierre de hilos y sockets | Cliente: el hilo de red es *daemon* y `detener()` cierra el socket. Servidor: `detener()` avisa a los clientes, cierra el socket (lo que desbloquea al hilo de recepción) y espera que los hilos terminen. No queda ningún proceso abierto. |
 | Mensaje mal formado | Se ignora; no cierra ni el servidor ni el cliente. |
 
 ## 7. Requisitos de aprobación
@@ -161,93 +161,93 @@ Para comprobarlo, la consola del servidor permite simular una red mala: `retardo
 | Requisito | Dónde se cumple |
 | --- | --- |
 | 1. Juego en red con 2 clientes y servidor en otra PC | Servidor en un repositorio y programa propios; clientes en cualquier PC de la subred. |
-| 2. Cliente-servidor con lógica en el servidor | `MatchSimulation` existe solo en el repositorio del servidor: el cliente ni siquiera tiene ese código. Los clientes envían `INPUT` y dibujan `STATE`. |
+| 2. Cliente-servidor con lógica en el servidor | `SimulacionPartida` existe solo en el repositorio del servidor: el cliente ni siquiera tiene ese código. Los clientes envían `INPUT` y dibujan `STATE`. |
 | 3. Retardos y sincronización | Sección 5. |
 | 4. Box2D | No se usa. Las colisiones son rectángulos calculados en el servidor. |
 | 5. Errores de red | Sección 6. |
-| 6. Reinicio de partidas | `RESULTS → LOBBY` automático; se juega otra partida sin reiniciar programas. |
-| 7. Broadcast | `ClientNetwork.sendDiscovery`: envía a `255.255.255.255`, a la dirección de broadcast de cada placa de red y a la propia PC. No hay IP escrita en el código. |
+| 6. Reinicio de partidas | `RESULTADOS → SALA` automático; se juega otra partida sin reiniciar programas. |
+| 7. Broadcast | `RedCliente.enviarBusqueda`: envía a `255.255.255.255`, a la dirección de broadcast de cada placa de red y a la propia PC. No hay IP escrita en el código. |
 
 ## 8. Clases nuevas
 
 ```mermaid
 classDiagram
-    class GameServer {
+    class ServidorJuego {
         -DatagramSocket socket
-        -MatchSimulation match
-        -List~ConnectedClient~ clients
-        -ConcurrentLinkedQueue inbox
-        +start() boolean
-        +stop()
-        -receiveLoop()
-        -gameLoop()
-        -handleMessage(Incoming)
-        -dropSilentClients()
-        -broadcastState()
+        -SimulacionPartida partida
+        -List~ClienteConectado~ clientes
+        -ConcurrentLinkedQueue bandejaEntrada
+        +iniciar() boolean
+        +detener()
+        -bucleRecepcion()
+        -bucleJuego()
+        -procesarMensaje(MensajeEntrante)
+        -sacarClientesSilenciosos()
+        -difundirEstado()
     }
-    class ConnectedClient {
-        address, port, playerId, name
-        lastPacketNanos
+    class ClienteConectado {
+        direccionIp, puerto, jugadorId, nombre
+        ultimoPaqueteNanos
     }
-    class MatchSimulation {
-        -List~Slot~ slots
-        -List~Projectile~ projectiles
-        -MatchPhase phase
-        +addPlayer(String) Player
-        +removePlayer(int)
-        +applyInput(int, PlayerInput)
-        +setReady(int, boolean)
-        +update(float)
-        +createSnapshot(long) WorldSnapshot
+    class SimulacionPartida {
+        -List~Lugar~ lugares
+        -List~Proyectil~ proyectiles
+        -FasePartida fase
+        +agregarJugador(String) Jugador
+        +quitarJugador(int)
+        +aplicarEntrada(int, EntradaJugador)
+        +setListo(int, boolean)
+        +actualizar(float)
+        +crearEstado(long) EstadoMundo
     }
-    class ClientNetwork {
+    class RedCliente {
         -DatagramSocket socket
-        -volatile Status status
-        -volatile SnapshotPair snapshots
-        +start()
-        +stop()
-        +sendInput(...)
-        +setReady(boolean)
-        +getSnapshots() SnapshotPair
+        -volatile EstadoConexion estadoConexion
+        -volatile ParEstados estados
+        +iniciar()
+        +detener()
+        +enviarEntrada(...)
+        +setListo(boolean)
+        +getEstados() ParEstados
     }
-    class WorldSnapshot {
-        seq, phase, phaseTimer
-        scoreBlue, scoreRed, winner
-        List~PlayerState~ players
-        List~ProjectileState~ projectiles
-        +toMessage() String
-        +parse(String, long)$ WorldSnapshot
+    class EstadoMundo {
+        secuencia, fase, tiempoFase
+        puntosAzul, puntosRojo, ganador
+        List~EstadoJugador~ jugadores
+        List~EstadoProyectil~ proyectiles
+        +aMensaje() String
+        +interpretar(String, long)$ EstadoMundo
     }
-    class PlayerInput {
-        seq, moveX, moveY, aimX, aimY
-        fire, abilityCount
-        +toMessage() String
-        +parse(String[])$ PlayerInput
+    class EntradaJugador {
+        secuencia, moverX, moverY, apuntarX, apuntarY
+        disparar, contadorHabilidad
+        +aMensaje() String
+        +interpretar(String[])$ EntradaJugador
     }
-    class BaseMenuScreen {
+    class PantallaMenuBase {
         <<abstract>>
         +render(float)
-        #update(float) boolean
-        #drawShapes(Vector3)*
-        #drawText(Vector3)*
-        #createInputProcessor()*
+        #actualizar(float) boolean
+        #dibujarFormas(Vector3)*
+        #dibujarTexto(Vector3)*
+        #crearProcesadorEntrada()*
     }
 
-    GameServer *-- ConnectedClient
-    GameServer *-- MatchSimulation
-    MatchSimulation *-- Player
-    MatchSimulation *-- Projectile
-    MatchSimulation ..> WorldSnapshot : crea
-    MatchSimulation ..> PlayerInput : recibe
-    ClientNetwork ..> WorldSnapshot : recibe
-    ClientNetwork ..> PlayerInput : envía
-    BaseMenuScreen <|-- MenuScreen
-    BaseMenuScreen <|-- ConnectScreen
-    BaseMenuScreen <|-- LobbyScreen
-    BaseMenuScreen <|-- PauseScreen
-    BaseMenuScreen <|-- ControlsScreen
-    BaseMenuScreen <|-- ResultsScreen
-    BaseMenuScreen <|-- MessageScreen
+    ServidorJuego *-- ClienteConectado
+    ServidorJuego *-- SimulacionPartida
+    SimulacionPartida *-- Jugador
+    SimulacionPartida *-- Proyectil
+    SimulacionPartida ..> EstadoMundo : crea
+    SimulacionPartida ..> EntradaJugador : recibe
+    RedCliente ..> EstadoMundo : recibe
+    RedCliente ..> EntradaJugador : envía
+    PantallaMenuBase <|-- PantallaMenu
+    PantallaMenuBase <|-- PantallaConexion
+    PantallaMenuBase <|-- PantallaSala
+    PantallaMenuBase <|-- PantallaPausa
+    PantallaMenuBase <|-- PantallaControles
+    PantallaMenuBase <|-- PantallaResultados
+    PantallaMenuBase <|-- PantallaMensaje
 ```
 
 ## 9. Cómo probar

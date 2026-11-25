@@ -2,6 +2,9 @@
 
 **Videojuego multijugador 2D Top-Down de disparos en arena**
 
+
+> **Nombres en español:** todo el código usa nombres en español (paquetes, clases, métodos y variables). La tabla de equivalencias con los nombres anteriores en inglés está en [docs/nombres.md](docs/nombres.md).
+
 ## Integrante
 
 * **Facundo Scardaoni**
@@ -139,7 +142,7 @@ Se vuelve casi invisible durante unos segundos. El servidor marca a Phantom como
 
 Las recargas y los colores siguen la propuesta: Volt con armadura azul (CyberCore), Brutus gris con rojo (Titan Force), Iris blanca con verde y cian (Aegis Protocol) y Phantom negro con rojo y casco cerrado (Shadow Syndicate).
 
-Cada jugador elige su personaje en la sala de espera (teclas `1` a `4` o con el mouse). Las estadísticas están definidas en `CharacterType`, dentro del paquete compartido `shared`.
+Cada jugador elige su personaje en la sala de espera (teclas `1` a `4` o con el mouse). Las estadísticas están definidas en `TipoPersonaje`, dentro del paquete compartido `compartido`.
 
 ## Arquitectura de red
 
@@ -292,21 +295,21 @@ También se puede jugar con los **botones del HUD**, abajo a la derecha: el bot�
 El juego está dividido en **dos repositorios**:
 
 * **Cliente** (este repositorio): pantallas, gráficos, sonido, entrada y la parte de red del cliente.
-* **Servidor** ([`OverZoneScardaoni-Server`](https://github.com/FacuScardaoni/OverZoneScardaoni-Server)): la partida real (`MatchSimulation`, `Player`, `Projectile`) y la red del servidor (`GameServer`).
+* **Servidor** ([`OverZoneScardaoni-Server`](https://github.com/FacuScardaoni/OverZoneScardaoni-Server)): la partida real (`SimulacionPartida`, `Jugador`, `Proyectil`) y la red del servidor (`ServidorJuego`).
 
-Los dos comparten el paquete **`shared`**, con lo que ambos necesitan conocer igual: el protocolo de mensajes, el mapa y algunas constantes. Ese paquete está copiado en los dos repositorios y tiene que ser idéntico en ambos. `Protocol.VERSION` indica la versión del protocolo: si un cliente y un servidor de versiones distintas intentan conectarse, la conexión se rechaza con un aviso claro, en lugar de fallar de forma confusa.
+Los dos comparten el paquete **`compartido`**, con lo que ambos necesitan conocer igual: el protocolo de mensajes, el mapa y algunas constantes. Ese paquete está copiado en los dos repositorios y tiene que ser idéntico en ambos. `Protocolo.VERSION` indica la versión del protocolo: si un cliente y un servidor de versiones distintas intentan conectarse, la conexión se rechaza con un aviso claro, en lugar de fallar de forma confusa.
 
 Este repositorio tiene dos módulos: `core` (el juego) y `lwjgl3` (el lanzador para computadoras de escritorio). Paquetes de `core/src/main/java/com/OverZone/Scardaoni/`:
 
 | Paquete | Contenido |
 | --- | --- |
-| `shared` | **Compartido con el servidor:** `Protocol`, `PlayerInput`, `WorldSnapshot`, `MatchPhase`, `GameMode`, `PowerUpType`, `Team`, `Direction`, `CharacterType`, `GameConstants`, `Arena`, `Obstacle`. |
-| `network` | `ClientNetwork`: búsqueda del servidor, conexión y recepción del estado. |
-| `input` | `PlayerInputProcessor`: captura teclado y mouse. |
-| `graphics` | `DirectionalAnimation`: animación desde spritesheet. |
-| `audio` | `AudioManager`: música, efectos y volumen. |
-| `ui` | `Hud` (interfaz fija en pantalla), `HudControls` (botones de ataque y súper), `UiKit` (fuentes e imágenes compartidas), `UiDraw` y `MenuBackground` (estilo visual de los menús). |
-| `screens` | `BaseMenuScreen` (base abstracta), `MenuScreen`, `ConnectScreen`, `LobbyScreen`, `GameScreen`, `PauseScreen`, `ControlsScreen`, `ResultsScreen`, `MessageScreen`. |
+| `compartido` | **Compartido con el servidor:** `Protocolo`, `EntradaJugador`, `EstadoMundo`, `FasePartida`, `ModoJuego`, `TipoPotenciador`, `Equipo`, `Direccion`, `TipoPersonaje`, `ConstantesJuego`, `Arena`, `Obstaculo`. |
+| `red` | `RedCliente`: búsqueda del servidor, conexión y recepción del estado. |
+| `entrada` | `ProcesadorEntrada`: captura teclado y mouse. |
+| `graficos` | `AnimacionDireccional`: animación desde spritesheet. |
+| `audio` | `GestorAudio`: música, efectos y volumen. |
+| `interfaz` | `Hud` (interfaz fija en pantalla), `ControlesHud` (botones de ataque y súper), `KitUi` (fuentes e imágenes compartidas), `DibujoUi` y `FondoMenu` (estilo visual de los menús). |
+| `pantallas` | `PantallaMenuBase` (base abstracta), `PantallaMenu`, `PantallaConexion`, `PantallaSala`, `PantallaJuego`, `PantallaPausa`, `PantallaControles`, `PantallaResultados`, `PantallaMensaje`. |
 
 El detalle de la red está en [`docs/arquitectura-red.md`](docs/arquitectura-red.md). El documento [`docs/diagrama-clases.md`](docs/diagrama-clases.md) describe el prototipo local de la etapa anterior.
 
