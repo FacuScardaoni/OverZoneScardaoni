@@ -21,20 +21,7 @@ import com.OverZone.Scardaoni.interfaz.FondoMenu;
 import com.OverZone.Scardaoni.interfaz.DibujoUi;
 import com.OverZone.Scardaoni.interfaz.KitUi;
 
-/**
- * Clase base ABSTRACTA de las pantallas de menú (menú principal, controles,
- * pausa, conexión, sala, resultados y mensajes).
- *
- * Todas comparten el mismo estilo visual: fondo animado, botones con las
- * esquinas cortadas y brillo de neón, paneles translúcidos y las fuentes del
- * juego. Ese código está acá una sola vez y cada pantalla hereda de esta.
- *
- * render() define el ORDEN de los pasos y cada pantalla completa los pasos
- * que le son propios (update, dibujarFormas, dibujarTexto). Como la clase no sabe
- * qué dibujar, esos métodos son abstractos.
- */
 public abstract class PantallaMenuBase implements Screen {
-
     protected static final float ANCHO = 480f;
     protected static final float ALTO = 270f;
     private static final float CORTE = 7f;
@@ -80,10 +67,6 @@ public abstract class PantallaMenuBase implements Screen {
     /** Quién escucha el teclado y el mouse mientras esta pantalla está activa. */
     protected abstract InputProcessor crearProcesadorEntrada();
 
-    /**
-     * Lógica de la pantalla en este frame. Devuelve true si cambió de
-     * pantalla: en ese caso no se dibuja nada más.
-     */
     protected boolean actualizar(float delta) {
         return false;
     }
@@ -172,11 +155,6 @@ public abstract class PantallaMenuBase implements Screen {
         dibujarBoton(rect, mouse, r, g, b, false);
     }
 
-    /**
-     * Botón de neón: panel oscuro con esquinas cortadas, borde y barra del color
-     * de acento, y un brillo que se enciende y el botón se desliza un poco
-     * cuando el mouse pasa por encima (o si está seleccionado con el teclado).
-     */
     protected void dibujarBoton(Rectangle rect, Vector3 mouse, float r, float g, float b, boolean seleccionado) {
         boolean activo = seleccionado || rect.contains(mouse.x, mouse.y);
         float h = resaltado.get(rect, 0f);
@@ -224,10 +202,6 @@ public abstract class PantallaMenuBase implements Screen {
         DibujoUi.contornoChaflan(formas, x, y, w, h, CORTE + 3);
     }
 
-    /**
-     * Título con efecto de "aberración cromática": copias desplazadas en
-     * naranja y cian detrás del texto principal.
-     */
     protected void dibujarTitulo(String texto, float x, float y, Color color) {
         dibujarTitulo(fuenteTitulo, texto, x, y, color);
     }
@@ -245,10 +219,6 @@ public abstract class PantallaMenuBase implements Screen {
         f.draw(batch, mayusculas, izquierda, y);
     }
 
-    /**
-     * Escribe un texto en (x, y) achicando la letra si no entra en el ancho
-     * indicado. Sirve para nombres largos dentro de tarjetas angostas.
-     */
     protected void dibujarAjustado(BitmapFont f, String texto, float x, float y, float anchoMaximo) {
         float escalaX = f.getData().scaleX, escalaY = f.getData().scaleY;
         medidor.setText(f, texto);

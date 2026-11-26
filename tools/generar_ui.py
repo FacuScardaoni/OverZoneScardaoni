@@ -1,10 +1,3 @@
-"""
-Genera las imágenes de la interfaz de OverZone: logo, botones de ataque y
-súper del HUD, y la textura de brillo que se usa para efectos.
-
-Uso (desde la carpeta del proyecto):  python tools/generar_ui.py
-Requiere: pip install pillow numpy
-"""
 import math
 import os
 
@@ -14,7 +7,6 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 RAIZ = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets")
 INTERFAZ = os.path.join(RAIZ, "ui")
 FUENTE_TITULO = os.path.join(RAIZ, "fonts", "RussoOne-Regular.ttf")
-
 
 def textura_brillo(tamanio=128):
     """Mancha de luz blanca, suave en los bordes. Se tiñe al dibujarla."""
@@ -27,7 +19,6 @@ def textura_brillo(tamanio=128):
     imagen[..., 3] = (a * 255).astype(np.uint8)
     return Image.fromarray(imagen)
 
-
 def relleno_radial(tamanio, interior, exterior):
     """Círculo con degradé del centro (inner) al borde (outer)."""
     y, x = np.mgrid[0:tamanio, 0:tamanio]
@@ -38,7 +29,6 @@ def relleno_radial(tamanio, interior, exterior):
     imagen[..., :3] = columna.astype(np.uint8)
     imagen[..., 3] = 255
     return Image.fromarray(imagen)
-
 
 def boton_circular(tamanio, interior, exterior, borde, dibujar_icono):
     """Botón redondo con degradé, borde claro, brillo superior y un ícono."""
@@ -61,7 +51,6 @@ def boton_circular(tamanio, interior, exterior, borde, dibujar_icono):
     dibujar_icono(ImageDraw.Draw(imagen), ss)
     return imagen.resize((tamanio, tamanio), Image.LANCZOS)
 
-
 def mira(d, ss):
     """Mira de francotirador."""
     c = ss / 2
@@ -74,13 +63,11 @@ def mira(d, ss):
     for ax, ay in ((1, 0), (-1, 0), (0, 1), (0, -1)):
         d.line([c + ax * ss * 0.13, c + ay * ss * 0.13, c + ax * ss * 0.36, c + ay * ss * 0.36], fill=blanco, width=w)
 
-
 def rayo(d, ss):
     """Rayo (súper de Volt)."""
     puntos = [(0.56, 0.18), (0.32, 0.54), (0.48, 0.54), (0.40, 0.84), (0.70, 0.42), (0.53, 0.42), (0.62, 0.18)]
     poligono = [(x * ss, y * ss) for x, y in puntos]
     d.polygon(poligono, fill=(255, 255, 255, 255), outline=(120, 60, 0, 255))
-
 
 def icono_escudo(d, ss):
     """Escudo (súper de Brutus)."""
@@ -90,14 +77,12 @@ def icono_escudo(d, ss):
     interior = [(0.50, 0.30), (0.64, 0.36), (0.62, 0.54), (0.50, 0.68)]
     d.polygon([(x * ss, y * ss) for x, y in interior], fill=(255, 190, 60, 255))
 
-
 def icono_curacion(d, ss):
     """Cruz de curación (súper de Iris)."""
     blanco = (255, 255, 255, 255)
     d.rounded_rectangle([ss * 0.42, ss * 0.22, ss * 0.58, ss * 0.78], radius=ss * 0.03, fill=blanco)
     d.rounded_rectangle([ss * 0.22, ss * 0.42, ss * 0.78, ss * 0.58], radius=ss * 0.03, fill=blanco)
     d.rounded_rectangle([ss * 0.46, ss * 0.30, ss * 0.54, ss * 0.70], radius=ss * 0.02, fill=(80, 220, 130, 255))
-
 
 def icono_ojo(d, ss):
     """Ojo tachado (súper de Phantom: camuflaje)."""
@@ -109,7 +94,6 @@ def icono_ojo(d, ss):
     d.ellipse([c - r, c - r, c + r, c + r], fill=(120, 30, 40, 255))
     d.line([ss * 0.24, ss * 0.76, ss * 0.76, ss * 0.24], fill=(120, 30, 40, 255), width=int(ss * 0.09))
     d.line([ss * 0.24, ss * 0.76, ss * 0.76, ss * 0.24], fill=blanco, width=int(ss * 0.04))
-
 
 def logo():
     """Logo "OVERZONE": OVER en blanco/cian y ZONE en naranja/amarillo, con brillo."""
@@ -161,7 +145,6 @@ def logo():
     salida.alpha_composite(barra.filter(ImageFilter.GaussianBlur(1.2)))
     return salida
 
-
 def principal():
     os.makedirs(INTERFAZ, exist_ok=True)
     imagenes = {
@@ -176,7 +159,6 @@ def principal():
     for nombre, imagen in imagenes.items():
         imagen.save(os.path.join(INTERFAZ, nombre))
         print("generado: ui/" + nombre, imagen.size)
-
 
 if __name__ == "__main__":
     principal()

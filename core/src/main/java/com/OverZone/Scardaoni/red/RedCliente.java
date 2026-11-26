@@ -19,22 +19,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 
-/**
- * Parte de red del CLIENTE.
- *
- * Tiene un socket UDP y un hilo propio que:
- *  1. Busca el servidor enviando un broadcast a toda la red local.
- *  2. Se conecta al servidor que respondió.
- *  3. Recibe el estado de la partida y lo deja disponible para las pantallas.
- *  4. Cada 250 ms avisa que sigue conectado (PING), y mide el retardo.
- *  5. Si el servidor deja de responder, marca la conexión como perdida.
- *
- * Las pantallas (hilo de dibujo de LibGDX) solo leen el estado y mandan las
- * entradas del jugador. No usa nada de LibGDX, así que se puede probar sin
- * ventana.
- */
 public class RedCliente {
-
     public enum EstadoConexion { INACTIVO, BUSCANDO, CONECTANDO, CONECTADO, FALLIDO }
 
     private static final long REINTENTO_BUSQUEDA_MS = 700;
@@ -66,13 +51,6 @@ public class RedCliente {
     private volatile int jugadorId = -1;
     private volatile boolean listo = false;
     private volatile TipoPersonaje personaje = TipoPersonaje.VOLT;
-    /**
-     * Pedido de cambio de modo. Funciona igual que el contador de la
-     * habilidad: cada vez que el jugador elige un modo, el contador sube en 1
-     * y viaja en todos los PING junto con el modo elegido. El servidor atiende
-     * cada número una sola vez. Si un paquete se pierde, el siguiente PING
-     * repite el pedido; y si el jugador vuelve a apretar, es un pedido nuevo.
-     */
     private volatile int contadorPedidosModo = 0;
     private volatile ModoJuego modoPedido = ModoJuego.TODOS_CONTRA_TODOS;
     private volatile ParEstados estados = null;
@@ -285,11 +263,6 @@ public class RedCliente {
     // Envíos
     // ------------------------------------------------------------------
 
-    /**
-     * Envía el pedido de descubrimiento a todas las direcciones de broadcast
-     * de la computadora, a la dirección de broadcast general y a la propia
-     * computadora (por si el servidor corre en la misma PC).
-     */
     private void enviarBusqueda() {
         byte[] datos = Protocolo.DISCOVER.getBytes(StandardCharsets.UTF_8);
         for (InetAddress objetivo : destinosBusqueda()) {
@@ -329,10 +302,6 @@ public class RedCliente {
             contadorPedidosModo, modoPedido.id(), System.nanoTime()));
     }
 
-    /**
-     * Envía las entradas del jugador. Lo llama la pantalla de juego en cada
-     * frame. Cuenta como pedido de habilidad si habilidadApretada es true.
-     */
     public void enviarEntrada(float moverX, float moverY, float apuntarX, float apuntarY,
                           boolean disparar, boolean habilidadApretada) {
         if (estadoConexion != EstadoConexion.CONECTADO) return;
@@ -391,11 +360,6 @@ public class RedCliente {
 
     public TipoPersonaje getPersonaje() { return personaje; }
 
-    /**
-     * Pide un modo de juego. Solo tiene efecto si este cliente es el
-     * anfitrión y el modo se puede jugar; si no, el servidor lo ignora.
-     * El pedido sale en el momento, sin esperar al próximo PING.
-     */
     public synchronized void pedirModo(ModoJuego modo) {
         modoPedido = modo;
         contadorPedidosModo++;

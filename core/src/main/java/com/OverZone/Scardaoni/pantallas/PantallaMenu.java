@@ -14,13 +14,7 @@ import com.OverZone.Scardaoni.JuegoOverZone;
 import com.OverZone.Scardaoni.interfaz.DibujoUi;
 import com.OverZone.Scardaoni.interfaz.KitUi;
 
-/**
- * Menú principal: logo, los dos personajes a los costados y las opciones
- * Jugar en red, Controles y Salir. Se puede usar con el mouse o con las
- * flechas y ENTER.
- */
 public class PantallaMenu extends PantallaMenuBase {
-
     private final Rectangle botonJugar     = new Rectangle(160, 118, 160, 32);
     private final Rectangle botonControles = new Rectangle(172, 80, 136, 26);
     private final Rectangle botonSalirJuego     = new Rectangle(172, 48, 136, 26);

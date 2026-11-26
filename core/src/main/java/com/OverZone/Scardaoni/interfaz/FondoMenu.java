@@ -8,16 +8,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 
-/**
- * Fondo animado de los menús: degradé oscuro, una grilla en perspectiva que
- * avanza hacia la pantalla, líneas de velocidad, chispas que suben y
- * explosiones de energía que aparecen cada tanto.
- *
- * Todo se calcula con el tiempo (update) y se dibuja con formas simples, sin
- * imágenes salvo la textura de brillo.
- */
 public class FondoMenu {
-
     private static final float ANCHO_FONDO = 480f, ALTO_FONDO = 270f;
     private static final float HORIZONTE = 96f;
     private static final int BRASAS = 70;

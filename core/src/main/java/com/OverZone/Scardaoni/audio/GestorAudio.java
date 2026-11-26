@@ -4,9 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
 
-
 public class GestorAudio {
-
     private Music musicaFondo;
     private Sound sonidoDisparo;
     private Sound sonidoGolpe;
@@ -65,7 +63,6 @@ public class GestorAudio {
         volumen = Math.max(0f, Math.min(1f, nuevoVolumen));
         aplicarVolumenMusica();
     }
-
 
     public void setVolumenXBarra(float nuevoVolumen) {
         setVolumen(nuevoVolumen);

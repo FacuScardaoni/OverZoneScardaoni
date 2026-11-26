@@ -6,23 +6,7 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
-/**
- * Botones de ataque y súper del HUD, al estilo de los juegos de celular.
- *
- * Funcionan como pequeños joysticks:
- *  - Se presiona sobre el botón y se ARRASTRA para apuntar (en el mapa se ve
- *    una línea de mira).
- *  - Al SOLTAR, se dispara (botón rojo) o se usa la habilidad (botón amarillo)
- *    en esa dirección.
- *  - Si se toca y se suelta sin arrastrar, el disparo apunta solo al enemigo
- *    más cercano (autoapuntado).
- *
- * Esta clase solo traduce el mouse en "intenciones" (dirección y momento del
- * disparo). Igual que el resto del cliente, no decide nada del juego: esas
- * intenciones se envían al servidor como entradas normales.
- */
 public class ControlesHud extends InputAdapter {
-
     // Tamaño de los botones y su distancia al borde derecho e inferior de la
     // pantalla (en unidades del HUD). La posición se calcula según el ancho
     // del HUD, así quedan siempre pegados a la esquina aunque cambie la ventana.
@@ -34,12 +18,6 @@ public class ControlesHud extends InputAdapter {
     public static final float ZONA_MUERTA = 6f;
     /** Cuánto se puede alejar la "perilla" del centro del botón. */
     public static final float ARRASTRE_MAX = 32f;
-    /**
-     * Durante cuánto tiempo se mantiene apretado el disparo después de soltar.
-     * Es menor que el tiempo entre disparos de los dos personajes, así que
-     * produce un único disparo; y como dura varios frames, aunque se pierda
-     * algún paquete en la red, el servidor igual recibe el pedido.
-     */
     private static final float PULSO_DISPARO = 0.12f;
 
     private final Viewport vistaHud;
@@ -76,11 +54,6 @@ public class ControlesHud extends InputAdapter {
     public boolean sobreSuper(float x, float y) {
         return Vector2.dst(x, y, superX(), superY()) <= RADIO_SUPER + 4;
     }
-
-    // ------------------------------------------------------------------
-    // Eventos del mouse. Devuelven true si el evento era para un botón, así
-    // no le llega a ProcesadorEntrada (y no dispara hacia el mouse).
-    // ------------------------------------------------------------------
 
     @Override
     public boolean touchDown(int pantallaX, int pantallaY, int puntero, int boton) {

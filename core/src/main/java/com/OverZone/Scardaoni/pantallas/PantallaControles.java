@@ -11,12 +11,7 @@ import com.OverZone.Scardaoni.JuegoOverZone;
 import com.OverZone.Scardaoni.interfaz.KitUi;
 import com.OverZone.Scardaoni.compartido.FasePartida;
 
-/**
- * Lista de controles. Se abre desde el menú principal o desde la pausa, y al
- * volver regresa a la pantalla desde la que se abrió.
- */
 public class PantallaControles extends PantallaMenuBase {
-
     private final Screen pantallaAnterior;
     private final Rectangle botonVolver = new Rectangle(190, 22, 100, 26);
 

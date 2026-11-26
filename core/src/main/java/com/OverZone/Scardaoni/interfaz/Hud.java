@@ -20,18 +20,7 @@ import com.OverZone.Scardaoni.compartido.TipoPotenciador;
 import com.OverZone.Scardaoni.compartido.Equipo;
 import com.OverZone.Scardaoni.compartido.EstadoMundo;
 
-/**
- * Interfaz fija sobre el juego, con cámara propia que no se mueve:
- *  - arriba a la izquierda: personaje, barra de vida y recarga de la habilidad;
- *  - arriba al centro: reloj y puntaje de cada equipo;
- *  - abajo a la derecha: botón rojo de ataque (con mira) y botón amarillo de súper;
- *  - abajo a la izquierda: ping y volumen.
- *
- * Todo lo que muestra lo recibe por parámetro (datos que llegaron del
- * servidor); el HUD nunca cambia el estado de la partida.
- */
 public class Hud {
-
     public static final float ANCHO_VIRTUAL = 480f;
     public static final float ALTO_VIRTUAL = 270f;
 
@@ -58,11 +47,6 @@ public class Hud {
         vista.update(ancho, alto, true);
     }
 
-    /**
-     * @param me      mi jugador (puede ser null un instante al conectarse)
-     * @param snap    estado de la partida recibido del servidor
-     * @param pingMs  retardo ida y vuelta con el servidor, o -1 si no se midió
-     */
     public void render(SpriteBatch batch, EstadoMundo.EstadoJugador yo, EstadoMundo estadoActual,
                        boolean silenciado, float volumen, float pingMs, ControlesHud controles, float delta) {
         tiempo += delta;
@@ -80,10 +64,6 @@ public class Hud {
         boolean superActiva = yo != null && yo.habilidadActiva;
         Color acento = KitUi.colorPersonaje(personaje);
 
-        // Puntajes: en Equipos, azul contra rojo. En Todos contra todos, mis
-        // eliminaciones contra las de mi mejor rival (el que más tiene sin
-        // contarme a mí). Antes se comparaba contra "el que va primero", y si
-        // el primero era yo los dos recuadros mostraban mis propios puntos.
         boolean todosContraTodos = estadoActual.getModo() == ModoJuego.TODOS_CONTRA_TODOS;
         EstadoMundo.EstadoJugador rival = todosContraTodos ? mejorRival(estadoActual, yo) : null;
         int puntosIzquierda, puntosDerecha;
@@ -252,10 +232,6 @@ public class Hud {
         batch.setColor(Color.WHITE);
     }
 
-    /**
-     * Mi mejor rival: el otro jugador con más eliminaciones (si empatan, el
-     * que tenga menos muertes). Null si estoy solo.
-     */
     private static EstadoMundo.EstadoJugador mejorRival(EstadoMundo estadoActual, EstadoMundo.EstadoJugador yo) {
         EstadoMundo.EstadoJugador mejor = null;
         for (EstadoMundo.EstadoJugador p : estadoActual.jugadores) {

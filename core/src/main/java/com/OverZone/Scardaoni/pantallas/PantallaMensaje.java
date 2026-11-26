@@ -8,12 +8,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
 import com.OverZone.Scardaoni.JuegoOverZone;
 
-/**
- * Muestra un aviso (por ejemplo, "se perdió la conexión") con un botón para
- * volver al menú. Así un problema de red nunca cierra ni traba el juego.
- */
 public class PantallaMensaje extends PantallaMenuBase {
-
     private final String titulo;
     private final String[] lineas;
     private final Rectangle botonMenu = new Rectangle(170, 40, 140, 30);

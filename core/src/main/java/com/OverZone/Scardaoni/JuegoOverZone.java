@@ -13,15 +13,7 @@ import com.OverZone.Scardaoni.pantallas.PantallaMenu;
 import com.OverZone.Scardaoni.pantallas.PantallaMensaje;
 import com.OverZone.Scardaoni.pantallas.PantallaResultados;
 
-/**
- * Clase principal del CLIENTE. Administra las pantallas, el audio y la
- * conexión con el servidor.
- *
- * Mientras hay conexión, las pantallas no deciden solas a cuál pasar: siguen
- * la etapa de la partida que informa el servidor (método seguirServidor).
- */
 public class JuegoOverZone extends Game {
-
     private GestorAudio gestorAudio;
     private KitUi interfaz;
     private RedCliente red;
@@ -66,13 +58,6 @@ public class JuegoOverZone extends Game {
         return red;
     }
 
-    /**
-     * Revisa la conexión y la etapa de la partida. Si la pantalla actual ya no
-     * corresponde, cambia a la que corresponde y devuelve true; en ese caso la
-     * pantalla que lo llamó debe terminar su render sin dibujar nada más.
-     *
-     * @param accepted etapas en las que la pantalla actual puede seguir.
-     */
     public boolean seguirServidor(FasePartida... aceptadas) {
         RedCliente conexion = red;
         if (conexion == null) {
@@ -103,12 +88,6 @@ public class JuegoOverZone extends Game {
         }
     }
 
-    /**
-     * Cambia de pantalla y libera la anterior. Game.setScreen no libera la
-     * pantalla anterior; si no se hiciera, cada pantalla vieja quedaría
-     * ocupando memoria. Se usa setScreen solo cuando se va a volver a la
-     * pantalla anterior (por ejemplo, de la pausa al juego).
-     */
     public void reemplazarPantalla(Screen siguiente) {
         Screen vieja = getScreen();
         setScreen(siguiente);

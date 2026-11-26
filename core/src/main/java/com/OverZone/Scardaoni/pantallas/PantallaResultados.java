@@ -18,13 +18,7 @@ import com.OverZone.Scardaoni.compartido.EstadoMundo;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Resultados de la partida. Los datos vienen del servidor. Pasados unos
- * segundos, el servidor vuelve a la sala de espera y esta pantalla la sigue,
- * así se puede jugar otra partida sin cerrar el programa.
- */
 public class PantallaResultados extends PantallaMenuBase {
-
     private final Rectangle botonSalir = new Rectangle(170, 20, 140, 28);
 
     public PantallaResultados(JuegoOverZone juego) {

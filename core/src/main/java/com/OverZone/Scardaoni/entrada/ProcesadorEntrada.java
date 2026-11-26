@@ -3,16 +3,7 @@ package com.OverZone.Scardaoni.entrada;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
 
-/**
- * Clase dedicada exclusivamente a procesar las entradas del jugador
- * (Consigna punto 1: Manejo de entradas y control de los elementos).
- *
- * Se registra en el multiplexor de Gdx.input y traduce teclado + mouse
- * en un estado consultable por el resto del juego (Jugador, PantallaJuego, etc).
- * No contiene lógica de juego: solo captura y expone el estado de entrada.
- */
 public class ProcesadorEntrada extends InputAdapter {
-
     // Movimiento (WASD -> 8 direcciones combinando ejes)
     private boolean arriba, abajo, izquierda, derecha;
 
@@ -77,7 +68,6 @@ public class ProcesadorEntrada extends InputAdapter {
         return true;
     }
 
-
     public void reiniciarMomentaneas() {
         disparoRecienApretado = false;
         habilidadRecienApretada = false;
@@ -87,12 +77,6 @@ public class ProcesadorEntrada extends InputAdapter {
         bajarVolumenRecienApretado = false;
     }
 
-    /**
-     * Limpia el estado de las teclas de movimiento. Se usa al cambiar de
-     * pantalla (por ejemplo al entrar o salir de la pausa), ya que el evento
-     * keyUp puede ocurrir mientras otra pantalla tiene el foco, dejando al
-     * personaje moviéndose solo al regresar.
-     */
     public void soltarTodasLasTeclas() {
         arriba = abajo = izquierda = derecha = false;
         disparoApretado = false;

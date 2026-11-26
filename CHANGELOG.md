@@ -4,6 +4,13 @@ Todos los cambios importantes realizados en **OverZone** serán documentados en 
 
 El formato utilizado está basado en el estándar **Keep a Changelog**, organizando las modificaciones desde las más recientes hasta las más antiguas.
 
+## [0.8.1] - 2026-11-26
+
+### Cambiado
+
+* Se borraron todos los comentarios de más de 3 renglones del código (Java y scripts de Python). Quedan los comentarios cortos, de 1 a 3 renglones. La excepción es el aviso de licencia Apache de `StartupHelper.java` (archivo de la plantilla de LibGDX), que la licencia obliga a mantener.
+* El juego no cambia: el programa compilado es idéntico al de la versión 0.8.0, y los scripts generan exactamente los mismos archivos. El protocolo sigue en la versión 5, así que no hace falta actualizar los dos repos a la vez.
+
 ## [0.8.0] - 2026-11-25
 
 Código en español. **Cambia el protocolo (versión 5): hay que actualizar los dos repositorios.**

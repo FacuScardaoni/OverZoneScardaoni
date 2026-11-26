@@ -5,9 +5,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
-
 public class AnimacionDireccional {
-
     // Las direcciones coinciden con las filas del spritesheet (ver Direccion).
     public static final int ABAJO = Direccion.ABAJO;
     public static final int IZQUIERDA = Direccion.IZQUIERDA;

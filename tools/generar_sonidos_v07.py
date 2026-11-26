@@ -1,9 +1,3 @@
-"""
-Genera los sonidos de las habilidades de Iris y Phantom:
-  assets/heal.wav  Campo de Regeneración (acorde brillante que sube)
-  assets/camo.wav  Camuflaje Óptico (barrido que baja y se apaga)
-Uso: python tools/generar_sonidos_v07.py      Requiere: pip install numpy
-"""
 import os
 import wave
 
@@ -11,7 +5,6 @@ import numpy as np
 
 FRECUENCIA_MUESTREO = 44100
 RECURSOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets")
-
 
 def guardar(nombre, senal_total):
     senal_total = senal_total / np.max(np.abs(senal_total)) * 0.7
@@ -22,7 +15,6 @@ def guardar(nombre, senal_total):
         w.setframerate(FRECUENCIA_MUESTREO)
         w.writeframes(datos.tobytes())
     print("generado:", nombre)
-
 
 def curacion():
     t = np.linspace(0, 0.6, int(FRECUENCIA_MUESTREO * 0.6), endpoint=False)
@@ -36,7 +28,6 @@ def curacion():
     senal += 0.15 * np.sin(2 * np.pi * 2093 * t) * np.exp(-t * 9)   # brillo
     return senal
 
-
 def camuflaje():
     t = np.linspace(0, 0.5, int(FRECUENCIA_MUESTREO * 0.5), endpoint=False)
     frecuencia = 900 * np.exp(-t * 4) + 120                                # baja
@@ -45,7 +36,6 @@ def camuflaje():
     ruido = np.convolve(ruido, np.ones(30) / 30, mode="same")        # ruido suave
     envolvente = np.minimum(1, t / 0.01) * np.exp(-t * 6)
     return envolvente * (0.7 * np.sin(fase) + 0.25 * np.sin(1.5 * fase) + 0.6 * ruido)
-
 
 if __name__ == "__main__":
     guardar("heal.wav", curacion())

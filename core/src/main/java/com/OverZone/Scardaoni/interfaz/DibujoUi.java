@@ -6,19 +6,9 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 
-/**
- * Funciones de dibujo del estilo visual del juego: paneles con las esquinas
- * cortadas en diagonal (típicos de las interfaces futuristas) y brillos.
- */
 public final class DibujoUi {
-
     private DibujoUi() { }
 
-    /**
-     * Rectángulo relleno con la esquina superior izquierda y la inferior
-     * derecha cortadas en diagonal. Se arma con triángulos desde el centro.
-     * Requiere ShapeRenderer en modo Filled.
-     */
     public static void chaflan(ShapeRenderer s, float x, float y, float w, float h, float corte) {
         float[] v = vertices(x, y, w, h, corte);
         float cx = x + w / 2f, cy = y + h / 2f;
@@ -39,10 +29,6 @@ public final class DibujoUi {
         s.set(ShapeRenderer.ShapeType.Filled);
     }
 
-    /**
-     * Halo de luz alrededor de un rectángulo biselado: varias capas cada vez
-     * más grandes y más transparentes.
-     */
     public static void brilloChaflan(ShapeRenderer s, float x, float y, float w, float h, float corte,
                                    Color color, float intensidad) {
         for (int i = 3; i >= 1; i--) {
@@ -63,10 +49,6 @@ public final class DibujoUi {
         };
     }
 
-    /**
-     * Dibuja la textura de brillo centrada en (x, y) con mezcla "aditiva":
-     * los colores se suman y aclaran lo de abajo, como una luz.
-     */
     public static void brillo(SpriteBatch batch, Texture brillo, float x, float y, float tamanio, Color color, float alfa) {
         int origen = batch.getBlendSrcFunc(), destino = batch.getBlendDstFunc();
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE);

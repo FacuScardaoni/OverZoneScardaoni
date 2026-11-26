@@ -12,15 +12,7 @@ import com.OverZone.Scardaoni.interfaz.KitUi;
 import com.OverZone.Scardaoni.audio.GestorAudio;
 import com.OverZone.Scardaoni.compartido.FasePartida;
 
-/**
- * Menú de pausa durante una partida en red.
- *
- * En un juego en red la partida NO se detiene: sigue corriendo en el
- * servidor. Mientras este menú está abierto, el cliente deja de mandar
- * entradas y el servidor detiene al personaje. La conexión sigue activa.
- */
 public class PantallaPausa extends PantallaMenuBase {
-
     private final PantallaJuego pantallaJuego;
     private final GestorAudio audio;
     /** true si se volvió a la partida: en ese caso no hay que liberarla. */

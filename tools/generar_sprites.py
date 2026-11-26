@@ -1,14 +1,3 @@
-"""
-Genera los sprites de OverZone (personajes, proyectiles, escudo y mapa).
-
-Todo se dibuja pixel por pixel con Pillow, así los recursos se pueden volver
-a generar o modificar cambiando colores y medidas en este archivo.
-
-Uso (desde la carpeta del proyecto):
-    python tools/generar_sprites.py
-
-Requiere: pip install pillow
-"""
 import math
 import os
 import random
@@ -20,21 +9,13 @@ CUADRO = 32
 ABAJO, IZQUIERDA, DERECHA, ARRIBA = 0, 1, 2, 3
 CONTORNO = (14, 16, 22, 255)
 
-
 def rgba(color_hex, alfa=255):
     color_hex = color_hex.lstrip("#")
     return tuple(int(color_hex[i:i + 2], 16) for i in (0, 2, 4)) + (alfa,)
 
-
 # ----------------------------------------------------------------------
 # Personajes
 # ----------------------------------------------------------------------
-
-# Colores de cada facción, según la propuesta:
-#   CyberCore (Volt):           azul, celeste y violeta
-#   Titan Force (Brutus):       gris metálico, rojo y negro
-#   Aegis Protocol (Iris):      blanco, verde y cian
-#   Shadow Syndicate (Phantom): negro, rojo oscuro y detalles luminosos
 
 VOLT = {
     "armadura": rgba("#3f7fe0"), "armadura_sombra": rgba("#24519c"), "armadura_clara": rgba("#8cc0ff"),
@@ -74,11 +55,9 @@ PHANTOM = {
     "ranura": True,              # casco cerrado: solo una ranura roja como visor
 }
 
-
 def rect(d, x0, y0, w, h, color):
     if w > 0 and h > 0:
         d.rectangle([x0, y0, x0 + w - 1, y0 + h - 1], fill=color)
-
 
 def caja_sombreada(d, x0, y0, w, h, base, claro, sombra):
     """Caja con luz arriba a la izquierda y sombra abajo a la derecha."""
@@ -88,12 +67,10 @@ def caja_sombreada(d, x0, y0, w, h, base, claro, sombra):
     rect(d, x0, y0 + h - 1, w, 1, sombra)
     rect(d, x0 + w - 1, y0, 1, h, sombra)
 
-
 def redondear_esquinas(d, x0, y0, w, h):
     """Borra las 4 esquinas de una caja para que se vea redondeada."""
     for x, y in ((x0, y0), (x0 + w - 1, y0), (x0, y0 + h - 1), (x0 + w - 1, y0 + h - 1)):
         d.point((x, y), fill=(0, 0, 0, 0))
-
 
 def desplazamientos_caminata(cuadro):
     """Desplazamiento de cada pierna y del cuerpo según el cuadro de caminata."""
@@ -101,7 +78,6 @@ def desplazamientos_caminata(cuadro):
     pierna = {0: (0, 0), 1: (1, -1), 2: (0, 0), 3: (-1, 1)}[cuadro]
     vaiven = -1 if cuadro in (1, 3) else 0
     return pierna, vaiven
-
 
 def dibujar_frente_espalda(d, s, cuadro, mira_abajo):
     (pierna_a, pierna_b), vaiven = desplazamientos_caminata(cuadro)
@@ -178,7 +154,6 @@ def dibujar_frente_espalda(d, s, cuadro, mira_abajo):
     if s.get("holograma"):
         dibujar_holograma(d, s, hx, hy, ancho_cabeza, cuadro)
 
-
 def dibujar_costado(d, s, cuadro, mira_derecha):
     pierna, vaiven = desplazamientos_caminata(cuadro)
     paso = pierna[0] * 2           # -2, 0 o 2 píxeles
@@ -237,7 +212,6 @@ def dibujar_costado(d, s, cuadro, mira_derecha):
     if s.get("holograma"):
         dibujar_holograma(d, s, hx, hy, ancho_cabeza, cuadro)
 
-
 def dibujar_holograma(d, s, hx, hy, ancho_cabeza, cuadro):
     """Dispositivos holográficos de Iris: un aro sobre la cabeza y un dron chico que flota."""
     vaiven = (0, -1, 0, 1)[cuadro]
@@ -248,7 +222,6 @@ def dibujar_holograma(d, s, hx, hy, ancho_cabeza, cuadro):
     rect(d, dx, dy, 3, 3, s["acento_oscuro"])
     d.point((dx + 1, dy + 1), fill=s["visor"])
     rect(d, dx - 1, dy + 1, 1, 1, s["acento"][:3] + (160,))
-
 
 def agregar_contorno(imagen):
     """Agrega un contorno oscuro de 1 píxel alrededor de la figura."""
@@ -267,7 +240,6 @@ def agregar_contorno(imagen):
                     break
     return salida
 
-
 def cuadro_personaje(especificacion, direccion, cuadro):
     cuerpo = Image.new("RGBA", (CUADRO, CUADRO), (0, 0, 0, 0))
     d = ImageDraw.Draw(cuerpo)
@@ -285,7 +257,6 @@ def cuadro_personaje(especificacion, direccion, cuadro):
     resultado.alpha_composite(cuerpo)
     return resultado
 
-
 def hoja_personaje(especificacion):
     """Spritesheet de 4 filas (abajo, izquierda, derecha, arriba) x 4 cuadros."""
     hoja = Image.new("RGBA", (CUADRO * 4, CUADRO * 4), (0, 0, 0, 0))
@@ -293,7 +264,6 @@ def hoja_personaje(especificacion):
         for cuadro in range(4):
             hoja.alpha_composite(cuadro_personaje(especificacion, direccion, cuadro), (cuadro * CUADRO, direccion * CUADRO))
     return hoja
-
 
 # ----------------------------------------------------------------------
 # Efectos: proyectiles, escudo, anillo de equipo
@@ -314,7 +284,6 @@ def bola_brillo(tamanio, radio_centro):
                 px[x, y] = (230, 240, 255, int(200 * (1 - t) ** 1.5))
     return imagen
 
-
 def proyectil_pesado(tamanio):
     """Proyectil pesado de Brutus: núcleo sólido con borde marcado."""
     imagen = bola_brillo(tamanio, tamanio * 0.30)
@@ -323,7 +292,6 @@ def proyectil_pesado(tamanio):
     c = (tamanio - 1) / 2
     d.ellipse([c - r, c - r, c + r, c + r], outline=(255, 255, 255, 255), width=1)
     return imagen
-
 
 def arco_escudo():
     """Arco del Escudo Cinético, apuntando hacia la derecha (se rota al dibujarlo)."""
@@ -344,7 +312,6 @@ def arco_escudo():
                     px[x, y] = (255, 150, 40, int(150 * desvanecido))           # interior traslúcido
     return imagen
 
-
 def bola_pulso(tamanio):
     """Pulso de energía de Iris: anillo con centro brillante (se tiñe al dibujarlo)."""
     imagen = bola_brillo(tamanio, tamanio * 0.16)
@@ -354,7 +321,6 @@ def bola_pulso(tamanio):
     d.ellipse([c - r, c - r, c + r, c + r], outline=(255, 255, 255, 230), width=1)
     return imagen
 
-
 def dardo(tamanio):
     """Dardo de Phantom: un rombo fino y muy brillante."""
     imagen = bola_brillo(tamanio, 0.8)
@@ -363,7 +329,6 @@ def dardo(tamanio):
     d.polygon([(c, 0), (c + tamanio * 0.18, c), (c, tamanio - 1), (c - tamanio * 0.18, c)], fill=(255, 255, 255, 255))
     d.polygon([(0, c), (c, c - tamanio * 0.12), (tamanio - 1, c), (c, c + tamanio * 0.12)], fill=(255, 255, 255, 200))
     return imagen
-
 
 def zona_regeneracion():
     """Campo de Regeneración de Iris (blanco: se tiñe de verde al dibujarlo)."""
@@ -395,14 +360,12 @@ def zona_regeneracion():
     d.rectangle([c - 10, c - 3, c + 10, c + 3], fill=(255, 255, 255, 150))
     return imagen
 
-
 def anillo_equipo():
     """Anillo blanco que se dibuja bajo los pies, teñido con el color del equipo."""
     imagen = Image.new("RGBA", (32, 16), (0, 0, 0, 0))
     d = ImageDraw.Draw(imagen)
     d.ellipse([1, 2, 30, 13], outline=(255, 255, 255, 230), width=2)
     return imagen
-
 
 # ----------------------------------------------------------------------
 # Mapa
@@ -435,7 +398,6 @@ def baldosa_piso():
     d.line([0, 32, tamanio - 1, 32], fill=rgba("#163a48"))
     return imagen
 
-
 def baldosa_pared():
     """Pared perimetral de 20x20 que se repite a lo largo y a lo alto."""
     tamanio = 20
@@ -448,7 +410,6 @@ def baldosa_pared():
         d.polygon([(x, 8), (x + 2, 8), (x + 4, 11), (x + 2, 11)], fill=rgba("#c9a227"))
     d.line([0, 0, 0, tamanio - 1], fill=rgba("#2a3038"))
     return imagen
-
 
 def bloque_cobertura():
     """Bloque de cobertura de 48x48: contenedor reforzado con un Núcleo Over."""
@@ -471,7 +432,6 @@ def bloque_cobertura():
     d.ellipse([cx - 2, cy - 2, cx + 1, cy + 1], fill=rgba("#bff6ff"))
     return imagen
 
-
 def decorado_centro():
     """Marca del Núcleo Over que se pinta en el centro del piso."""
     tamanio = 96
@@ -489,7 +449,6 @@ def decorado_centro():
     d.ellipse([c - 4, c - 4, c + 3, c + 3], fill=rgba("#7ee9ff", 230))
     return imagen
 
-
 def zona_aparicion(color):
     """Zona de aparición de un equipo (se pinta en el piso)."""
     w, h = 72, 168
@@ -500,7 +459,6 @@ def zona_aparicion(color):
         d.line([4, y, 10, y + 6], fill=color[:3] + (70,))
         d.line([w - 11, y, w - 5, y + 6], fill=color[:3] + (70,))
     return imagen
-
 
 def principal():
     os.makedirs(RECURSOS, exist_ok=True)
@@ -527,7 +485,6 @@ def principal():
     for nombre, imagen in salida.items():
         imagen.save(os.path.join(RECURSOS, nombre))
         print("generado:", nombre, imagen.size)
-
 
 if __name__ == "__main__":
     principal()

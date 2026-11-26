@@ -1,8 +1,3 @@
-"""
-Genera assets/shield.wav: el sonido del Escudo Cinético (un zumbido grave
-que sube, con un brillo metálico). Uso: python tools/generar_sonido_escudo.py
-Requiere: pip install numpy
-"""
 import os
 import wave
 

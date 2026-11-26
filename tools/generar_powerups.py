@@ -1,13 +1,3 @@
-"""
-Genera las imágenes y el sonido de los Power-Ups:
-  assets/powerup_health.png    Botiquín (cruz verde)
-  assets/powerup_turbo.png     Turbo (flechas amarillas)
-  assets/powerup_overload.png  Sobrecarga (rayo rojo)
-  assets/powerup_armor.png     Blindaje (escudo celeste)
-  assets/powerup_pad.png       base en el piso donde aparecen (blanca, se tiñe)
-  assets/powerup.wav           sonido al agarrar uno
-Uso: python tools/generar_powerups.py      Requiere: pip install pillow numpy
-"""
 import math
 import os
 import wave
@@ -26,11 +16,9 @@ COLORES = {
     "blindaje": (80, 210, 255),
 }
 
-
 def hexagono(cx, cy, r):
     return [(cx + r * math.cos(math.radians(60 * i + 30)), cy + r * math.sin(math.radians(60 * i + 30)))
             for i in range(6)]
-
 
 def capsula(color, icono):
     s = TAMANIO * SUPERMUESTREO
@@ -48,13 +36,11 @@ def capsula(color, icono):
     icono(d, s, color)
     return imagen.resize((TAMANIO, TAMANIO), Image.LANCZOS)
 
-
 def icono_botiquin(d, s, c):
     w, h = s * 0.09, s * 0.22
     d.rectangle([s / 2 - w, s / 2 - h, s / 2 + w, s / 2 + h], fill=c)
     d.rectangle([s / 2 - h, s / 2 - w, s / 2 + h, s / 2 + w], fill=c)
     d.rectangle([s / 2 - w * 0.4, s / 2 - h * 0.8, s / 2 + w * 0.4, s / 2 + h * 0.8], fill=(255, 255, 255, 200))
-
 
 def icono_turbo(d, s, c):
     for k in (-0.10, 0.06):
@@ -63,13 +49,11 @@ def icono_turbo(d, s, c):
                    (x - s * 0.02, s / 2)], fill=c)
     d.line([(s * 0.30, s / 2), (s * 0.40, s / 2)], fill=(255, 255, 255, 200), width=int(s * 0.03))
 
-
 def icono_sobrecarga(d, s, c):
     puntos = [(s * 0.56, s * 0.24), (s * 0.36, s * 0.53), (s * 0.49, s * 0.53),
            (s * 0.42, s * 0.77), (s * 0.66, s * 0.45), (s * 0.52, s * 0.45)]
     d.polygon(puntos, fill=c)
     d.line([puntos[0], puntos[1]], fill=(255, 255, 255, 220), width=int(s * 0.025))
-
 
 def icono_blindaje(d, s, c):
     puntos = [(s * 0.5, s * 0.25), (s * 0.70, s * 0.33), (s * 0.67, s * 0.56),
@@ -77,7 +61,6 @@ def icono_blindaje(d, s, c):
     d.polygon(puntos, fill=c)
     d.polygon([(s * 0.5, s * 0.33), (s * 0.62, s * 0.38), (s * 0.60, s * 0.54), (s * 0.5, s * 0.66)],
               fill=(255, 255, 255, 120))
-
 
 def base_piso():
     """Base circular en el piso (blanca, el juego la tiñe con el color del Power-Up)."""
@@ -97,7 +80,6 @@ def base_piso():
         d.line([(x1, y1), (x2, y2)], fill=(255, 255, 255, 200), width=int(s * 0.035))
     return imagen.resize((tamanio, tamanio), Image.LANCZOS)
 
-
 def sonido_recogida():
     frecuencia_muestreo = 44100
     t = np.linspace(0, 0.35, int(frecuencia_muestreo * 0.35), endpoint=False)
@@ -113,7 +95,6 @@ def sonido_recogida():
         w.setframerate(frecuencia_muestreo)
         w.writeframes((senal * 32767).astype(np.int16).tobytes())
     print("generado: powerup.wav")
-
 
 if __name__ == "__main__":
     iconos = {"botiquin": icono_botiquin, "turbo": icono_turbo, "sobrecarga": icono_sobrecarga, "blindaje": icono_blindaje}

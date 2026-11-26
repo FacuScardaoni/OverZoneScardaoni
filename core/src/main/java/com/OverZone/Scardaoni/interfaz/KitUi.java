@@ -12,21 +12,7 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.FreeTypeFontParameter;
 import com.badlogic.gdx.utils.Disposable;
 
-/**
- * Recursos de la interfaz que comparten todas las pantallas: fuentes,
- * logo, botones del HUD y la textura de brillo.
- *
- * Se crean una sola vez en JuegoOverZone y se liberan al cerrar el juego, en lugar de
- * que cada pantalla cargue los suyos.
- *
- * Las fuentes se generan al arrancar a partir de archivos .ttf con la
- * extensión FreeType de LibGDX. Se generan al doble del tamaño necesario y se
- * dibujan a la mitad (escala 0,5) para que se vean nítidas aunque se agrande
- * la ventana. Fuentes: Russo One (títulos) y Chakra Petch (textos), ambas con
- * licencia libre OFL (ver assets/fonts).
- */
 public class KitUi implements Disposable {
-
     /** Caracteres que se incluyen en las fuentes: los básicos más los del castellano. */
     private static final String CARACTERES = FreeTypeFontGenerator.DEFAULT_CHARS + "áéíóúÁÉÍÓÚñÑüÜ¿¡°·–";
     private static final Color BORDE = new Color(0.02f, 0.03f, 0.07f, 1f);
@@ -45,10 +31,6 @@ public class KitUi implements Disposable {
     public static final Color COLOR_SOBRECARGA = new Color(1f, 0.32f, 0.2f, 1f);
     public static final Color COLOR_BLINDAJE = new Color(0.32f, 0.82f, 1f, 1f);
 
-    /**
-     * Colores de los jugadores en Todos contra todos (el "team" de cada uno es
-     * su número de color). Los dos primeros coinciden con azul y rojo.
-     */
     public static final Color[] COLORES_TODOS_CONTRA_TODOS = {
         EQUIPO_AZUL, EQUIPO_ROJO, new Color(0.40f, 0.95f, 0.50f, 1f), new Color(0.85f, 0.50f, 1f, 1f)
     };
@@ -133,10 +115,6 @@ public class KitUi implements Disposable {
         }
     }
 
-    /**
-     * Color de un jugador según el modo: en Equipos, azul o rojo; en Todos
-     * contra todos, el color propio de cada uno.
-     */
     public static Color colorJugador(ModoJuego modo, int equipo) {
         if (modo == ModoJuego.EQUIPOS) return equipo == Equipo.AZUL ? EQUIPO_AZUL : EQUIPO_ROJO;
         return COLORES_TODOS_CONTRA_TODOS[Math.floorMod(equipo, COLORES_TODOS_CONTRA_TODOS.length)];

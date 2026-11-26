@@ -9,14 +9,7 @@ import com.badlogic.gdx.math.Vector3;
 import com.OverZone.Scardaoni.JuegoOverZone;
 import com.OverZone.Scardaoni.red.RedCliente;
 
-/**
- * Busca el servidor en la red local (broadcast) y se conecta.
- *
- * No hace falta escribir ninguna IP. Si no encuentra servidor, lo informa y
- * permite reintentar o volver al menú.
- */
 public class PantallaConexion extends PantallaMenuBase {
-
     private final Rectangle botonReintentar = new Rectangle(110, 40, 120, 30);
     private final Rectangle botonVolver  = new Rectangle(250, 40, 120, 30);
     private float transcurrido = 0f;

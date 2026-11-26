@@ -46,21 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Pantalla de juego del CLIENTE.
- *
- * Ya no simula la partida: eso lo hace el servidor. En cada frame:
- *  1. Lee teclado y mouse y le ENVÍA esas entradas al servidor.
- *  2. Toma los dos últimos estados que mandó el servidor.
- *  3. DIBUJA a cada jugador y proyectil en un punto intermedio entre esos
- *     dos estados (interpolación), para que el movimiento se vea suave
- *     aunque los estados lleguen 30 veces por segundo y con algo de retardo.
- *
- * Los sonidos también se deducen del estado: si aparece un proyectil nuevo,
- * suena un disparo; si baja mi vida, suena un impacto, etc.
- */
 public class PantallaJuego implements Screen {
-
     /** Si un jugador se movió más que esto entre dos estados, reapareció: no se interpola. */
     private static final float DISTANCIA_TELETRANSPORTE = 80f;
 
@@ -255,12 +241,6 @@ public class PantallaJuego implements Screen {
     // Entradas: teclado, mouse y botones del HUD
     // ------------------------------------------------------------------
 
-    /**
-     * Arma y envía la entrada de este frame. El punto de mira es la posición
-     * del mouse en el mapa, salvo que se esté usando un botón del HUD: en ese
-     * caso apunta en la dirección en que se arrastró el botón (o al enemigo
-     * más cercano si solo se tocó). Son solo pedidos: el servidor decide.
-     */
     private void enviarEntradas(RedCliente conexion, EstadoMundo.EstadoJugador yo, EstadoMundo estadoActual) {
         Vector3 mouse = vistaMundo.unproject(new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0));
         float apuntarX = mouse.x, apuntarY = mouse.y;
@@ -322,10 +302,6 @@ public class PantallaJuego implements Screen {
         }
     }
 
-    /**
-     * Mientras se arrastra un botón del HUD, dibuja en el mapa hacia dónde se
-     * va a disparar (línea roja) o usar la habilidad (amarillo).
-     */
     private void dibujarIndicadorApuntado(EstadoMundo.EstadoJugador yo, RedCliente.ParEstados par, float alfa) {
         boolean ataque = controlesHud.apuntandoAtaque();
         boolean habilidad = controlesHud.apuntandoSuper();
@@ -384,11 +360,6 @@ public class PantallaJuego implements Screen {
     // Interpolación
     // ------------------------------------------------------------------
 
-    /**
-     * Qué tan avanzado está el tiempo entre el estado anterior (0) y el
-     * actual (1). Se mide con el tiempo que tardó en llegar el estado actual
-     * después del anterior.
-     */
     private float alfaInterpolacion(RedCliente.ParEstados par) {
         long intervalo = par.actual.recibidoNanos - par.anterior.recibidoNanos;
         if (intervalo <= 0) return 1f;
@@ -580,11 +551,6 @@ public class PantallaJuego implements Screen {
         return p.habilidadActiva && TipoPersonaje.desdeId(p.personaje) == TipoPersonaje.PHANTOM;
     }
 
-    /**
-     * Qué tan visible se dibuja un jugador. El servidor solo informa que
-     * Phantom está camuflado; cada cliente decide cómo mostrarlo: casi
-     * invisible si es rival, translúcido si es uno mismo o un compañero.
-     */
     private float opacidadPara(EstadoMundo.EstadoJugador p, EstadoMundo.EstadoJugador yo, EstadoMundo estadoActual) {
         if (!estaCamuflado(p)) return 1f;
         boolean amigo = yo == null || p.id == yo.id || !estadoActual.sonRivales(yo, p);
@@ -614,12 +580,6 @@ public class PantallaJuego implements Screen {
         batch.setColor(Color.WHITE);
     }
 
-    /**
-     * El servidor no avisa "fulano agarró un Power-Up": el cliente lo deduce.
-     * Si un Power-Up desapareció durante la partida y había un jugador encima,
-     * ese jugador lo agarró: se muestra el nombre del efecto y, si fui yo,
-     * suena el efecto de sonido.
-     */
     private void detectarRecogidas(EstadoMundo estadoActual, int miId, float delta) {
         if (estadoActual.fase == FasePartida.JUGANDO) {
             for (EstadoMundo.EstadoPotenciador vieja : ultimosPotenciadores.values()) {

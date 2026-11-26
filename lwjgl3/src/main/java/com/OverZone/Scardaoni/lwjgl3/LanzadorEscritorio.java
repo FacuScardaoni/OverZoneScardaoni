@@ -4,7 +4,6 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.OverZone.Scardaoni.JuegoOverZone;
 
-
 public class LanzadorEscritorio {
     public static void main(String[] argumentos) {
         if (StartupHelper.startNewJvmIfRequired()) return;
@@ -23,7 +22,6 @@ public class LanzadorEscritorio {
 
         configuracion.setWindowedMode(640, 480);
         configuracion.setWindowIcon("libgdx128.png", "libgdx64.png", "libgdx32.png", "libgdx16.png");
-
 
         return configuracion;
     }

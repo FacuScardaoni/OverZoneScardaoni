@@ -24,22 +24,7 @@ import com.OverZone.Scardaoni.compartido.EstadoMundo;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Sala de espera.
- *
- *  - Arriba a la izquierda: los jugadores conectados (hasta 4), con su
- *    personaje, su color o equipo y si están listos.
- *  - Arriba a la derecha: el modo de juego. Solo el anfitrión (el primero
- *    que se conectó, marcado con una estrella) puede cambiarlo. "Equipos 2v2"
- *    se habilita únicamente con 4 jugadores en la sala.
- *  - Abajo: las cuatro tarjetas de personaje (teclas 1 a 4).
- *
- * El personaje y el modo elegidos viajan al servidor en cada PING. El servidor
- * decide si los acepta y lo informa de vuelta en el estado: la pantalla
- * siempre muestra lo que dice el servidor, no lo que pidió el cliente.
- */
 public class PantallaSala extends PantallaMenuBase {
-
     private final Rectangle botonListo = new Rectangle(110, 8, 120, 24);
     private final Rectangle botonSalir = new Rectangle(250, 8, 120, 24);
 
@@ -178,11 +163,6 @@ public class PantallaSala extends PantallaMenuBase {
         elegir(TipoPersonaje.desdeId(Math.floorMod(conexion.getPersonaje().id() + paso, n)));
     }
 
-    /**
-     * Elegir un modo. Antes de mandar el pedido se revisa lo mismo que va a
-     * revisar el servidor, para avisarle al jugador en el momento por qué no
-     * se puede, en vez de que el botón "no haga nada".
-     */
     private void elegirModo(ModoJuego modo) {
         EstadoMundo estadoActual = ultimo();
         if (estadoActual == null) return;
